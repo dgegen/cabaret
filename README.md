@@ -26,37 +26,72 @@ python -c "import cabaret"
 
 ### Basic image 
 
-To generate an image from RA/DEC coordinates and a field of vue specified in degrees:
-
+To generate an image from RA/DEC coordinates, run:
 ```python
 import cabaret
 
-ra, dec = 12.3323, 30.4343 # in degrees
-exposure_time = 10 # in seconds
-
-image = cabaret.generate_image(ra, dec, exposure_time)
+image = cabaret.generate_image(
+    ra=12.33230,  # right ascension in degrees
+    dec=30.4343,  # declination in degrees
+    exp_time=10,  # exposure time in seconds
+)
 ```
 
-and to display the image (`matplotlib` required here):
+To display the image (`matplotlib` required here):
 
 ```python
 import matplotlib.pyplot as plt
+import numpy as np
 
-plt.imshow(image)
+med = np.median(science)
+std = np.std(science)
+
+fig, ax = plt.subplots()
+img = ax.imshow(science, cmap="gray", vmin=med - 1 * std, vmax=med + 1 * std)
+cbar = plt.colorbar(img, ax=ax)
+colorbar.set_label("Intensity (ADU)")
+plt.show()
 ```
 
-### Using the camera characteristics
+### Configuring an Observatory
 
-To adjust the physical characteristics of the camera, you can define and pass a `Camera` object. Similary, one can pass `Telescope` and `Site` objects to define the telescope and site characteristics, respectively.
+You can customize the physical characteristics of the observatory by defining and passing Camera, Telescope, and Site objects.
 
 ```python
+import datetime
 import cabaret
-from cabaret import Camera
 
-camera = Camera(read_noise=10, gain=1)
+# Define the observatory with specific characteristics
+observatory = cabaret.Observatory(
+    name="MyObservatory",
+    camera=cabaret.Camera(
+        name="MyCamera",
+        height=1024,  # Height of the camera in pixels
+        width=1024,  # Width of the camera in pixels
+        read_noise=10,  # Read noise in electrons
+        gain=1,  # Gain in e-/ADU
+        pixel_defects=dict(
+            cold_pixels=dict(rate=0.005, value=300, seed=42)  # defaults to ConstantPixelDefect
+        ),
+    ),
+    site=cabaret.Site(sky_background=21.0, seeing=1.5),
+    telescope=cabaret.Telescope(diameter=1.0, focal_length=8.0),
+)
 
-ra, dec = 12.3323, 30.4343 # in degrees
-exposure_time = 10 # in seconds
+# Generate an image with the configured observatory
+image = observatory.generate_image(
+    ra=12.33230,  # right ascension in degrees
+    dec=30.4343,  # declination in degrees
+    exp_time=10,  # exposure time in seconds
+    dateobs=datetime.datetime.now(datetime.UTC),  # time of observation
+)
+```
 
-image = cabaret.generate_image(ra, dec, exposure_time, camera=camera)
-``` 
+You can easily save your observatory configuration to a YAML file:
+```python
+observatory.save_to_yaml("path/to/config_file.yaml")
+```
+To load a previously saved configuration, you can use:
+```python
+observatory.load_from_yaml("path/to/config_file.yaml")
+```

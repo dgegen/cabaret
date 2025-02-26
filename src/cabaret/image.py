@@ -1,16 +1,28 @@
 from datetime import UTC, datetime
+import logging
 
 import numpy as np
+import numpy.random
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 
-from cabaret.observatory import Camera, Site, Telescope
+from cabaret.camera import Camera
+from cabaret.site import Site
+from cabaret.telescope import Telescope
+
 from cabaret.queries import gaia_radecs
+
+logger = logging.getLogger("cabaret")
 
 
 def moffat_profile(
-    x: np.ndarray, y: np.ndarray, x0: float, y0: float, FWHM: float, beta: float = 2.5
-):
+    x: np.ndarray,
+    y: np.ndarray,
+    x0: float,
+    y0: float,
+    FWHM: float,
+    beta: float = 2.5,
+) -> np.ndarray:
     # https://nbviewer.org/github/ysbach/AO_2017/blob/master/04_Ground_Based_Concept.ipynb#1.2.-Moffat
     # FWHM =  2 * R * (2**(1/beta) - 1)**0.5
 
@@ -26,24 +38,33 @@ def moffat_profile(
     return mp / mp_sum
 
 
-# slow version
-# def generate_star_image(pos, fluxes, FWHM, frame_size):
-#     x = np.linspace(0, frame_size[0] - 1, frame_size[0])
-#     y = np.linspace(0, frame_size[1] - 1, frame_size[1])
-#     xx, yy = np.meshgrid(x, y)
+def generate_star_image_slow(
+    pos: np.ndarray,
+    fluxes: list,
+    FWHM: float,
+    frame_size: tuple,
+    rng: numpy.random.Generator,
+):
+    x = np.linspace(0, frame_size[0] - 1, frame_size[0])
+    y = np.linspace(0, frame_size[1] - 1, frame_size[1])
+    xx, yy = np.meshgrid(x, y)
 
-#     image = np.zeros(frame_size).T
-#     for i, flux in enumerate(fluxes):
-#         x0 = pos[0][i]
-#         y0 = pos[1][i]
-#         star = np.random.poisson(flux) * moffat_profile(xx, yy, x0, y0, FWHM)
-#         image += star
+    image = np.zeros(frame_size).T
+    for i, flux in enumerate(fluxes):
+        x0 = pos[0][i]
+        y0 = pos[1][i]
+        star = rng.poisson(flux) * moffat_profile(xx, yy, x0, y0, FWHM)
+        image += star
 
-#     return image
+    return image
 
 
 def generate_star_image(
-    pos: np.array, fluxes: list, FWHM: float, frame_size: tuple
+    pos: np.ndarray,
+    fluxes: list,
+    FWHM: float,
+    frame_size: tuple,
+    rng: numpy.random.Generator,
 ) -> np.ndarray:
     x = np.linspace(0, frame_size[0] - 1, frame_size[0])
     y = np.linspace(0, frame_size[1] - 1, frame_size[1])
@@ -63,7 +84,7 @@ def generate_star_image(
         x_min, x_max = max(0, x_min), min(x_max, frame_size[0] - 1)
         y_min, y_max = max(0, y_min), min(y_max, frame_size[1] - 1)
 
-        star = np.random.poisson(flux) * moffat_profile(
+        star = rng.poisson(flux) * moffat_profile(
             xx[y_min : y_max + 1, x_min : x_max + 1],
             yy[y_min : y_max + 1, x_min : x_max + 1],
             x0,
@@ -76,25 +97,29 @@ def generate_star_image(
 
 
 def generate_image(
-    ra,
-    dec,
-    exp_time,
-    dateobs=datetime.now(UTC),
-    light=1,
-    camera=Camera,
-    telescope=Telescope,
-    site=Site,
-    tmass=True,
-    n_star_limit=2000,
-):
+    ra: float,
+    dec: float,
+    exp_time: float,
+    dateobs: datetime = datetime.now(UTC),
+    light: int = 1,
+    camera: Camera = Camera(),
+    telescope: Telescope = Telescope(),
+    site: Site = Site(),
+    tmass: bool = True,
+    n_star_limit: int = 2000,
+    rng: numpy.random.Generator = numpy.random.default_rng(),
+    seed: int | None = None,
+) -> np.ndarray:
+    if seed is not None:
+        rng = numpy.random.default_rng(seed)
 
     base = np.ones((camera.height, camera.width)).astype(np.float64)
 
-    base += np.random.poisson(base * camera.dark_current * exp_time).astype(np.float64)
+    base += rng.poisson(base * camera.dark_current * exp_time).astype(np.float64)
 
-    base += np.random.normal(
-        0, camera.read_noise, (camera.height, camera.width)
-    ).astype(np.float64)
+    base += rng.normal(0, camera.read_noise, (camera.height, camera.width)).astype(
+        np.float64
+    )
 
     if camera.plate_scale is None:
         camera.plate_scale = (
@@ -107,7 +132,6 @@ def generate_image(
         telescope.collecting_area = np.pi * (telescope.diameter / 2) ** 2  # [m^2]
 
     if light == 1:
-
         # call gaia
         center = SkyCoord(ra=ra, dec=dec, unit="deg")
 
@@ -121,7 +145,7 @@ def generate_image(
             np.sqrt(2) * camera.height * camera.plate_scale / 3600
         )  # to account for poles, maybe should scale instead
 
-        print("Querying Gaia for sources...")
+        logger.info("Querying Gaia for sources...")
         gaias, vals = gaia_radecs(
             center,
             (fovx * 1.5, fovy * 1.5),
@@ -129,7 +153,7 @@ def generate_image(
             dateobs=dateobs,
             limit=n_star_limit,
         )
-        print(f"Found {len(gaias)} sources (user set limit of {n_star_limit}).")
+        logger.info(f"Found {len(gaias)} sources (user set limit of {n_star_limit}).")
 
         wcs = WCS(naxis=2)
         wcs.wcs.cdelt = [-camera.plate_scale / 3600, -camera.plate_scale / 3600]
@@ -169,6 +193,7 @@ def generate_image(
                 fluxes,
                 site.seeing / camera.plate_scale,
                 (camera.width, camera.height),
+                rng=rng,
             ).astype(
                 np.float64
             )  # * flat
@@ -178,7 +203,7 @@ def generate_image(
             )  # [e-/s]
 
             # make base image with sky background
-            image = base + np.random.poisson(
+            image = base + rng.poisson(
                 np.ones((camera.height, camera.width)).astype(np.float64)
                 * sky_background
                 * exp_time
@@ -194,6 +219,10 @@ def generate_image(
 
     # convert to adu and add camera's bias
     image = image / camera.gain + camera.bias  # [adu]
+
+    # inject defect pixels
+    for defect in camera.pixel_defects.values():
+        image = defect.introduce_pixel_defect(image, camera)
 
     # clip to max adu
     image = np.clip(image, 0, camera.max_adu)
@@ -212,7 +241,7 @@ if __name__ == "__main__":
     site = Site(seeing=1.3, sky_background=350)
     exp_time = 0.1  # [s]
 
-    print("Generating image...")
+    logger.info("Generating image...")
 
     # example usage
     image = generate_image(
