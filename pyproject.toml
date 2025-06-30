@@ -4,6 +4,7 @@ version = "0.1.2"
 authors = [
   {name = "Peter Pedersen"},
   {name = "Lionel Garcia"},
+  {name = "David Degen"},
 ]
 repository = "https://github.com/ppp-one/cabaret"
 readme = "README.md"
