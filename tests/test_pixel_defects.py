@@ -4,8 +4,8 @@ import pytest
 from cabaret.camera import (
     Camera,
     ConstantPixelDefect,
-    TelegraphicPixelDefect,
     RandomNoisePixelDefect,
+    TelegraphicPixelDefect,
 )
 
 

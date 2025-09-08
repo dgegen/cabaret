@@ -67,6 +67,7 @@ class Observatory:
         n_star_limit: int = 2000,
         rng: numpy.random.Generator = numpy.random.default_rng(),
         seed: int | None = None,
+        timeout: float | None = None,
     ) -> numpy.ndarray:
         """Generate a simulated image of the sky.
 
@@ -90,6 +91,9 @@ class Observatory:
             Random number generator.
         seed : int, optional
             Random number generator seed.
+        timeout : float, optional
+            The maximum time to wait for the Gaia query to complete, in seconds.
+            If None, there is no timeout. By default, it is set to None.
         """
         return generate_image(
             ra=ra,
@@ -104,6 +108,7 @@ class Observatory:
             n_star_limit=n_star_limit,
             rng=rng,
             seed=seed,
+            timeout=timeout,
         )
 
     def to_dict(self) -> dict:
@@ -124,20 +129,21 @@ class Observatory:
         try:
             import yaml
 
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 config = yaml.safe_load(f)
 
             return cls.from_dict(config)
 
         except ImportError:
-            raise ImportError("Please install PyYAML to load Observatory configuration from YAML.")
+            raise ImportError(
+                "Please install PyYAML to load Observatory configuration from YAML."
+            )
         except FileNotFoundError:
             raise FileNotFoundError(f"File not found: {file_path}")
         except Exception as e:
             raise Exception(f"Error loading Observatory configuration: {e}")
 
     def save_to_yaml(self, file_path: str | Path):
-        """ """
         try:
             import yaml
 
@@ -145,6 +151,8 @@ class Observatory:
                 yaml.dump(self.to_dict(), f)
 
         except ImportError:
-            raise ImportError("Please install PyYAML to save Observatory configuration to YAML.")
+            raise ImportError(
+                "Please install PyYAML to save Observatory configuration to YAML."
+            )
         except Exception as e:
             raise Exception(f"Error saving Observatory configuration: {e}")
