@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import logging
+from datetime import UTC, datetime
 
 import numpy as np
 import numpy.random
@@ -7,10 +7,9 @@ from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 
 from cabaret.camera import Camera
+from cabaret.queries import gaia_radecs
 from cabaret.site import Site
 from cabaret.telescope import Telescope
-
-from cabaret.queries import gaia_radecs
 
 logger = logging.getLogger("cabaret")
 
@@ -109,6 +108,7 @@ def generate_image(
     n_star_limit: int = 2000,
     rng: numpy.random.Generator = numpy.random.default_rng(),
     seed: int | None = None,
+    timeout: float | None = None,
 ) -> np.ndarray:
     if seed is not None:
         rng = numpy.random.default_rng(seed)
@@ -152,6 +152,7 @@ def generate_image(
             tmass=tmass,
             dateobs=dateobs,
             limit=n_star_limit,
+            timeout=timeout,
         )
         logger.info(f"Found {len(gaias)} sources (user set limit of {n_star_limit}).")
 
@@ -194,9 +195,7 @@ def generate_image(
                 site.seeing / camera.plate_scale,
                 (camera.width, camera.height),
                 rng=rng,
-            ).astype(
-                np.float64
-            )  # * flat
+            ).astype(np.float64)  # * flat
 
             sky_background = (
                 site.sky_background * telescope.collecting_area * camera.plate_scale**2
@@ -207,9 +206,7 @@ def generate_image(
                 np.ones((camera.height, camera.width)).astype(np.float64)
                 * sky_background
                 * exp_time
-            ).astype(
-                np.float64
-            )  # * flat
+            ).astype(np.float64)  # * flat
 
             image += stars
 

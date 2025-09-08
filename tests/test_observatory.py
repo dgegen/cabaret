@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
-from cabaret.observatory import Observatory
+
 from cabaret.camera import Camera
-from cabaret.telescope import Telescope
+from cabaret.observatory import Observatory
 from cabaret.site import Site
+from cabaret.telescope import Telescope
 
 
 def test_observatory_initialization():

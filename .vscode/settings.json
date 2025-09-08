@@ -5,7 +5,7 @@
             "source.organizeImports": "explicit"
         },
         "editor.formatOnPaste": false,
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "charliermarsh.ruff"
     },
     "python.testing.pytestArgs": [
         "tests"

@@ -1,7 +1,6 @@
-from typing import Literal
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-
+from typing import Literal
 
 import numpy as np
 import numpy.random
