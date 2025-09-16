@@ -4,11 +4,25 @@ from datetime import datetime
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+from astropy.table import Table
 from astropy.units import Quantity
 from astroquery.gaia import Gaia
 
+from cabaret.sources import Sources
 
-def gaia_launch_job_with_timeout(query, timeout=None, **kwargs):
+
+def tmass_mag_to_photons(mags: np.ndarray) -> np.ndarray:
+    """Convert 2MASS J magnitudes to photon fluxes at mag 0.
+
+    Reference: https://lweb.cfa.harvard.edu/~dfabricant/huchra/ay145/mags.html
+    Returns photons/sec/m^2 for each magnitude.
+    """
+    Jy = 1.51e7  # [photons sec^-1 m^-2 (dlambda/lambda)^-1]
+    photons = 0.16 * 1600 * Jy  # [photons sec^-1 m^-2] at mag 0
+    return photons * 10 ** (-0.4 * mags)
+
+
+def gaia_launch_job_with_timeout(query, timeout=None, **kwargs) -> Table:
     """
     Launch a Gaia job and return its results, optionally enforcing a timeout.
 
@@ -47,7 +61,101 @@ def gaia_launch_job_with_timeout(query, timeout=None, **kwargs):
             raise TimeoutError("Gaia query timed out.")
 
 
-def gaia_radecs(
+def gaia_query(
+    center: tuple[float, float] | SkyCoord,
+    fov: float | Quantity,
+    limit: int = 100000,
+    circular: bool = True,
+    tmass: bool = False,
+    timeout: float | None = None,
+) -> Table:
+    """Query Gaia and return the raw Astropy Table.
+
+    Example
+    -------
+    >>> from cabaret.queries import gaia_table_query
+    >>> from astropy.coordinates import SkyCoord
+    >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
+    >>> table = gaia_table_query(center, fov=0.1, limit=10, timeout=30)
+    """
+    if isinstance(center, SkyCoord):
+        ra = center.ra.deg
+        dec = center.dec.deg
+    else:
+        ra, dec = center
+
+    if not isinstance(fov, u.Quantity):
+        fov = u.Quantity(fov, u.deg)
+
+    if fov.ndim == 1:
+        ra_fov, dec_fov = fov.to(u.deg).value
+    else:
+        ra_fov = dec_fov = fov.to(u.deg).value
+
+    radius = np.max([ra_fov, dec_fov]) / 2
+
+    select_cols = [
+        "gaia.ra",
+        "gaia.dec",
+        "gaia.pmra",
+        "gaia.pmdec",
+        "gaia.phot_rp_mean_flux",
+    ]
+    joins = []
+    where = []
+    order_by = "gaia.phot_rp_mean_flux DESC"
+
+    if tmass:
+        select_cols.append("tmass.j_m")
+        joins.extend(
+            [
+                "INNER JOIN gaiadr2.tmass_best_neighbour AS tmass_match "
+                + "ON tmass_match.source_id = gaia.source_id",
+                "INNER JOIN gaiadr1.tmass_original_valid AS tmass "
+                + "ON tmass.tmass_oid = tmass_match.tmass_oid",
+            ]
+        )
+        order_by = "tmass.j_m"
+
+    if circular:
+        where.append(
+            f"1=CONTAINS(POINT('ICRS', {ra}, {dec}), "
+            f"CIRCLE('ICRS', gaia.ra, gaia.dec, {radius}))"
+        )
+    else:
+        where.append(
+            f"gaia.ra BETWEEN {ra - ra_fov / 2} AND {ra + ra_fov / 2} "
+            f"AND gaia.dec BETWEEN {dec - dec_fov / 2} AND {dec + dec_fov / 2}"
+        )
+
+    select_clause = ", ".join(select_cols)
+    joins_clause = "\n".join(joins)
+    where_clause = " AND ".join(where)
+
+    query = f"""
+    SELECT TOP {limit} {select_clause}
+    FROM gaiadr2.gaia_source AS gaia
+    {joins_clause}
+    WHERE {where_clause}
+    ORDER BY {order_by}
+    """
+
+    table = gaia_launch_job_with_timeout(query, timeout=timeout)
+    return table
+
+
+def apply_proper_motion(table: Table, dateobs: datetime):
+    """
+    Apply proper motion correction to RA and DEC columns for the given observation date.
+    """
+    dateobs_frac = dateobs.year + (dateobs.timetuple().tm_yday - 1) / 365.25  # type: ignore
+    years = dateobs_frac - 2015.5  # type: ignore
+    table["ra"] += years * table["pmra"] / 1000 / 3600
+    table["dec"] += years * table["pmdec"] / 1000 / 3600
+    return table
+
+
+def get_gaia_sources(
     center: tuple[float, float] | SkyCoord,
     fov: float | Quantity,
     limit: int = 100000,
@@ -55,7 +163,7 @@ def gaia_radecs(
     tmass: bool = False,
     dateobs: datetime | None = None,
     timeout: float | None = None,
-) -> np.ndarray:
+) -> Sources:
     """
     Query the Gaia archive to retrieve the RA-DEC coordinates of stars
     within a given field-of-view (FOV) centered on a given sky position.
@@ -87,8 +195,15 @@ def gaia_radecs(
     Returns
     -------
     np.ndarray
-        An array of shape (n, 2) containing the RA-DEC coordinates
-        of the retrieved sources in degrees.
+        A tuple containing:
+        - An array of shape (n, 2) containing the RA-DEC coordinates
+          of the retrieved sources in degrees.
+        - An array of shape (n,) containing the fluxes of the retrieved sources.
+
+    Notes
+    -----
+    If `tmass` is True, the fluxes are calculated from the 2MASS J-band magnitudes, see
+    `cabaret.queries.tmass_mag_to_photons`.
 
     Raises
     ------
@@ -97,97 +212,32 @@ def gaia_radecs(
 
     Examples
     --------
+    >>> from cabaret.queries import get_gaia_sources
     >>> from astropy.coordinates import SkyCoord
-    >>> from twirl import gaia_radecs
     >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
-    >>> fov = 0.1
-    >>> radecs = gaia_radecs(center, fov)
+    >>> sources = get_gaia_sources(center, fov=0.1, timeout=30)
     """
+    table = gaia_query(
+        center=center,
+        fov=fov,
+        limit=limit,
+        circular=circular,
+        tmass=tmass,
+        timeout=timeout,
+    )
 
-    if isinstance(center, SkyCoord):
-        ra = center.ra.deg
-        dec = center.dec.deg
-    else:
-        ra, dec = center
-
-    if not isinstance(fov, u.Quantity):
-        fov = fov * u.deg
-
-    if fov.ndim == 1:
-        ra_fov, dec_fov = fov.to(u.deg).value
-    else:
-        ra_fov = dec_fov = fov.to(u.deg).value
-
-    radius = np.max([ra_fov, dec_fov]) / 2
-
-    select_cols = [
-        "gaia.ra",
-        "gaia.dec",
-        "gaia.pmra",
-        "gaia.pmdec",
-        "gaia.phot_rp_mean_flux",
-    ]
-    joins = []
-    where = []
-    order_by = "gaia.phot_rp_mean_flux DESC"
-
-    # add TMASS columns/joins/order if requested
-    if tmass:
-        select_cols.append("tmass.j_m")
-        joins.extend(
-            [
-                "INNER JOIN gaiadr2.tmass_best_neighbour AS tmass_match "
-                + "ON tmass_match.source_id = gaia.source_id",
-                "INNER JOIN gaiadr1.tmass_original_valid AS tmass "
-                + "ON tmass.tmass_oid = tmass_match.tmass_oid",
-            ]
-        )
-        order_by = "tmass.j_m"
-
-    # spatial filter (circular or rectangular)
-    if circular:
-        where.append(
-            f"1=CONTAINS(POINT('ICRS', {ra}, {dec}), "
-            f"CIRCLE('ICRS', gaia.ra, gaia.dec, {radius}))"
-        )
-    else:
-        where.append(
-            f"gaia.ra BETWEEN {ra - ra_fov / 2} AND {ra + ra_fov / 2} "
-            f"AND gaia.dec BETWEEN {dec - dec_fov / 2} AND {dec + dec_fov / 2}"
-        )
-
-    select_clause = ", ".join(select_cols)
-    joins_clause = "\n".join(joins)
-    where_clause = " AND ".join(where)
-
-    query = f"""
-    SELECT TOP {limit} {select_clause}
-    FROM gaiadr2.gaia_source AS gaia
-    {joins_clause}
-    WHERE {where_clause}
-    ORDER BY {order_by}
-    """
-
-    table = gaia_launch_job_with_timeout(query, timeout=timeout)
-
-    # add proper motion to ra and dec
     if dateobs is not None:
-        # calculate fractional year
-        dateobs = dateobs.year + (dateobs.timetuple().tm_yday - 1) / 365.25  # type: ignore
-
-        years = dateobs - 2015.5  # type: ignore
-        table["ra"] += years * table["pmra"] / 1000 / 3600
-        table["dec"] += years * table["pmdec"] / 1000 / 3600
+        table = apply_proper_motion(table, dateobs)
 
     if tmass:
-        table.remove_rows(np.isnan(table["j_m"]))
-        return (
-            np.array([table["ra"].value.data, table["dec"].value.data]).T,
-            table["j_m"].value.data,
-        )
+        fluxes = tmass_mag_to_photons(table["j_m"].value.data)
     else:
-        table.remove_rows(np.isnan(table["phot_rp_mean_flux"]))
-        return (
-            np.array([table["ra"].value.data, table["dec"].value.data]).T,
-            table["phot_rp_mean_flux"].value.data,
-        )
+        fluxes = table["phot_rp_mean_flux"].value.data
+    table.remove_rows(np.isnan(fluxes))
+    fluxes = fluxes[~np.isnan(fluxes)]
+
+    return Sources.from_arrays(
+        ra=table["ra"].value.data,
+        dec=table["dec"].value.data,
+        fluxes=fluxes,
+    )

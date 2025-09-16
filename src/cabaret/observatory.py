@@ -7,6 +7,7 @@ import numpy.random
 from cabaret.camera import Camera
 from cabaret.image import generate_image
 from cabaret.site import Site
+from cabaret.sources import Sources
 from cabaret.telescope import Telescope
 
 
@@ -68,6 +69,7 @@ class Observatory:
         rng: numpy.random.Generator = numpy.random.default_rng(),
         seed: int | None = None,
         timeout: float | None = None,
+        sources: Sources | None = None,
     ) -> numpy.ndarray:
         """Generate a simulated image of the sky.
 
@@ -94,6 +96,9 @@ class Observatory:
         timeout : float, optional
             The maximum time to wait for the Gaia query to complete, in seconds.
             If None, there is no timeout. By default, it is set to None.
+        sources : Sources, optional
+            A collection of sources with their sky coordinates and fluxes.
+            If provided, these sources will be used instead of querying Gaia.
         """
         return generate_image(
             ra=ra,
@@ -109,6 +114,7 @@ class Observatory:
             rng=rng,
             seed=seed,
             timeout=timeout,
+            sources=sources,
         )
 
     def to_dict(self) -> dict:

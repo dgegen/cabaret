@@ -5,6 +5,7 @@ import pytest
 from cabaret.camera import Camera
 from cabaret.observatory import Observatory
 from cabaret.site import Site
+from cabaret.sources import Sources
 from cabaret.telescope import Telescope
 
 
@@ -25,6 +26,22 @@ def test_observatory_post_init():
     assert isinstance(observatory.camera, Camera)
     assert isinstance(observatory.telescope, Telescope)
     assert isinstance(observatory.site, Site)
+
+
+def test_generate_image_from_sources():
+    observatory = Observatory()
+
+    sources = Sources.from_arrays(
+        ra=[10.64, 10.68], dec=[10.68, 41.22], fluxes=[169435.6, 52203.9]
+    )
+    img = observatory.generate_image(
+        ra=sources.ra.deg.mean(),
+        dec=sources.dec.deg.mean(),
+        exp_time=10,
+        seed=0,
+        sources=sources,
+    )
+    assert img is not None
 
 
 def test_generate_image():
