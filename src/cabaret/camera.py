@@ -4,6 +4,7 @@ from typing import Literal
 
 import numpy as np
 import numpy.random
+from astropy.wcs import WCS
 
 
 @dataclass
@@ -65,6 +66,18 @@ class Camera:
             "gain": 1.0,
         }
         return cls(**(parameters | kwargs))
+
+    def get_wcs(self, center):
+        if self.plate_scale is None:
+            raise ValueError("plate_scale must be set to compute WCS.")
+
+        wcs = WCS(naxis=2)
+        wcs.wcs.cdelt = [-self.plate_scale / 3600, -self.plate_scale / 3600]
+        wcs.wcs.cunit = ["deg", "deg"]
+        wcs.wcs.crpix = [int(self.width / 2), int(self.height / 2)]
+        wcs.wcs.crval = [center.ra.deg, center.dec.deg]
+        wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        return wcs
 
     def _create_blank_image(self) -> np.ndarray:
         """Create a blank image filled with zeros for testing."""

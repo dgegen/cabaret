@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 import numpy as np
 import numpy.random
 from astropy.coordinates import SkyCoord
-from astropy.wcs import WCS
 
 from cabaret.camera import Camera
-from cabaret.queries import gaia_radecs
+from cabaret.queries import get_gaia_sources
 from cabaret.site import Site
+from cabaret.sources import Sources
 from cabaret.telescope import Telescope
 
 logger = logging.getLogger("cabaret")
@@ -109,6 +109,7 @@ def generate_image(
     rng: numpy.random.Generator = numpy.random.default_rng(),
     seed: int | None = None,
     timeout: float | None = None,
+    sources: Sources | None = None,
 ) -> np.ndarray:
     if seed is not None:
         rng = numpy.random.default_rng(seed)
@@ -146,47 +147,31 @@ def generate_image(
         )  # to account for poles, maybe should scale instead
 
         logger.info("Querying Gaia for sources...")
-        gaias, vals = gaia_radecs(
-            center,
-            (fovx * 1.5, fovy * 1.5),
-            tmass=tmass,
-            dateobs=dateobs,
-            limit=n_star_limit,
-            timeout=timeout,
-        )
-        logger.info(f"Found {len(gaias)} sources (user set limit of {n_star_limit}).")
-
-        wcs = WCS(naxis=2)
-        wcs.wcs.cdelt = [-camera.plate_scale / 3600, -camera.plate_scale / 3600]
-        wcs.wcs.cunit = ["deg", "deg"]
-        wcs.wcs.crpix = [int(camera.width / 2), int(camera.height / 2)]
-        wcs.wcs.crval = [center.ra.deg, center.dec.deg]
-        wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        # gaias, vals = get_gaia_sources(
+        if not isinstance(sources, Sources):
+            sources = get_gaia_sources(
+                center,
+                (fovx * 1.5, fovy * 1.5),
+                tmass=tmass,
+                dateobs=dateobs,
+                limit=n_star_limit,
+                timeout=timeout,
+            )
+        logger.info(f"Found {len(sources)} sources (user set limit of {n_star_limit}).")
 
         image = base
 
-        if len(gaias) > 0:
-            if tmass:
-                # convert mags to fluxes. Reference: https://lweb.cfa.harvard.edu/~dfabricant/huchra/ay145/mags.html
-                Jy = 1.51e7  # [photons sec^-1 m^-2 (dlambda/lambda)^-1]
-                photons = 0.16 * 1600 * Jy  # [photons sec^-1 m^-2] at mag 0
-                fluxes = (
-                    photons
-                    * 10 ** (-0.4 * vals)
-                    * camera.average_quantum_efficiency
-                    * telescope.collecting_area
-                    * exp_time
-                )  # [electrons]
-            else:
-                fluxes = (
-                    vals
-                    * camera.average_quantum_efficiency
-                    * telescope.collecting_area
-                    * exp_time
-                )  # [electrons]
+        if len(sources) > 0:
+            fluxes = (
+                sources.fluxes
+                * camera.average_quantum_efficiency
+                * telescope.collecting_area
+                * exp_time
+            )  # [electrons]
 
             # convert gaia stars to pixel coordinates
-            gaias_pixel = np.array(SkyCoord(gaias, unit="deg").to_pixel(wcs))
+            wcs = camera.get_wcs(center)
+            gaias_pixel = sources.to_pixel(wcs)
 
             # stars within frame and moffat profile
             stars = generate_star_image(
