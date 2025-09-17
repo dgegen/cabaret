@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy.random
 
 from cabaret.camera import Camera
+from cabaret.focuser import Focuser
 from cabaret.image import generate_image
 from cabaret.site import Site
 from cabaret.sources import Sources
@@ -21,6 +22,8 @@ class Observatory:
         Observatory name.
     camera : Camera, dict, optional
         Camera configuration.
+    focuser: Focuser, dict, optional
+        Focuser configuration.
     telescope : Telescope, dict, optional
         Telescope configuration.
     site : Site, dict, optional
@@ -28,23 +31,41 @@ class Observatory:
 
     Examples
     --------
-    >>> from datetime import datetime
+    >>> from datetime import datetime, UTC
     >>> from cabaret.observatory import Observatory
     >>> observatory = Observatory()
     >>> dateobs = datetime.now(UTC)
+
+    Query Gaia for sources and generate an image:
     >>> image = observatory.generate_image(
     ...     ra=12.3323, dec=30.4343, exp_time=10, dateobs=dateobs, seed=0
+    ... )
+
+    Or using a set of predefined sources:
+    >>> from cabaret.sources import Sources
+    >>> sources = Sources.from_arrays(
+    ...     ra=[10.64, 10.68], dec=[10.68, 41.22], fluxes=[169435.6, 52203.9]
+    ... )
+    >>> img = observatory.generate_image(
+    ...     ra=sources.ra.deg.mean(),
+    ...     dec=sources.dec.deg.mean(),
+    ...     exp_time=10,
+    ...     seed=0,
+    ...     sources=sources,
     ... )
     """
 
     name: str = "Observatory"
     camera: Camera = field(default_factory=Camera)
+    focuser: Focuser = field(default_factory=Focuser)
     telescope: Telescope = field(default_factory=Telescope)
     site: Site = field(default_factory=Site)
 
     def __post_init__(self):
         if isinstance(self.camera, dict):
             self.camera = Camera(**self.camera)
+        if isinstance(self.focuser, dict):
+            self.focuser = Focuser(**self.focuser)
         if isinstance(self.telescope, dict):
             self.telescope = Telescope(**self.telescope)
         if isinstance(self.site, dict):
@@ -52,6 +73,8 @@ class Observatory:
 
         if not isinstance(self.camera, Camera):
             raise ValueError("camera must be an instance of Camera.")
+        if not isinstance(self.focuser, Focuser):
+            raise ValueError("focuser must be an instance of Focuser.")
         if not isinstance(self.telescope, Telescope):
             raise ValueError("telescope must be an instance of Telescope.")
         if not isinstance(self.site, Site):
@@ -107,6 +130,7 @@ class Observatory:
             dateobs=dateobs,
             light=light,
             camera=self.camera,
+            focuser=self.focuser,
             telescope=self.telescope,
             site=self.site,
             tmass=tmass,
@@ -125,6 +149,7 @@ class Observatory:
         return cls(
             name=config.get("name", "Observatory"),
             camera=Camera(**config["camera"]),
+            focuser=Focuser(**config.get("focuser", {})),
             telescope=Telescope(**config["telescope"]),
             site=Site(**config["site"]),
         )

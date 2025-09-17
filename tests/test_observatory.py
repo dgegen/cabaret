@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from cabaret.camera import Camera
+from cabaret.focuser import Focuser
 from cabaret.observatory import Observatory
 from cabaret.site import Site
 from cabaret.sources import Sources
@@ -13,6 +14,7 @@ def test_observatory_initialization():
     observatory = Observatory()
     assert observatory.name == "Observatory"
     assert isinstance(observatory.camera, Camera)
+    assert isinstance(observatory.focuser, Focuser)
     assert isinstance(observatory.telescope, Telescope)
     assert isinstance(observatory.site, Site)
 
