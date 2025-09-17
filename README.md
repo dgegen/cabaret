@@ -74,6 +74,7 @@ observatory = cabaret.Observatory(
             cold_pixels=dict(rate=0.005, value=300, seed=42)  # defaults to ConstantPixelDefect
         ),
     ),
+    focuser=cabaret.Focuser(best_position=10_000, scale=100, max_seeing_multiplier=5.0),
     site=cabaret.Site(sky_background=21.0, seeing=1.5),
     telescope=cabaret.Telescope(diameter=1.0, focal_length=8.0),
 )
@@ -94,4 +95,18 @@ observatory.save_to_yaml("path/to/config_file.yaml")
 To load a previously saved configuration, you can use:
 ```python
 observatory.load_from_yaml("path/to/config_file.yaml")
+```
+
+Additionally, you can generate images from a list of Sources
+```python
+sources = cabaret.Sources.from_arrays(
+    ra=[10.64, 10.68], dec=[10.68, 41.22], fluxes=[169435.6, 52203.9]
+)
+image = observatory.generate_image(
+    ra=sources.ra.deg.mean(),
+    dec=sources.dec.deg.mean(),
+    exp_time=10,
+    seed=0,
+    sources=sources,
+)
 ```

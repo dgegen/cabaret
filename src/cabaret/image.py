@@ -6,6 +6,7 @@ import numpy.random
 from astropy.coordinates import SkyCoord
 
 from cabaret.camera import Camera
+from cabaret.focuser import Focuser
 from cabaret.queries import get_gaia_sources
 from cabaret.site import Site
 from cabaret.sources import Sources
@@ -102,6 +103,7 @@ def generate_image(
     dateobs: datetime = datetime.now(UTC),
     light: int = 1,
     camera: Camera = Camera(),
+    focuser: Focuser = Focuser(),
     telescope: Telescope = Telescope(),
     site: Site = Site(),
     tmass: bool = True,
@@ -177,7 +179,7 @@ def generate_image(
             stars = generate_star_image(
                 gaias_pixel,
                 fluxes,
-                site.seeing / camera.plate_scale,
+                focuser.seeing_multiplier * site.seeing / camera.plate_scale,
                 (camera.width, camera.height),
                 rng=rng,
             ).astype(np.float64)  # * flat
