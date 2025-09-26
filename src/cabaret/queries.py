@@ -94,14 +94,26 @@ class Filters(Enum):
         return value.upper() in cls.__members__
 
 
-def tmass_mag_to_photons(mags: np.ndarray) -> np.ndarray:
+def tmass_mag_to_photons(mags: np.ndarray, filter_band: Filters) -> np.ndarray:
     """Convert 2MASS J magnitudes to photon fluxes at mag 0.
 
     Reference: https://lweb.cfa.harvard.edu/~dfabricant/huchra/ay145/mags.html
     Returns photons/sec/m^2 for each magnitude.
     """
+    # Use a dict for 2MASS filter properties
+    dlam_lam_map = {"J": 0.16, "H": 0.23, "KS": 0.23}
+    flux_m0_map = {"J": 1600, "H": 1080, "KS": 670}
+
+    try:
+        dlam_lam = dlam_lam_map[filter_band.name]
+        flux_m0 = flux_m0_map[filter_band.name]
+    except KeyError:
+        raise ValueError(
+            f"tmass_mag_to_photons expects a 2MASS filter (J,H,KS), got {filter_band}"
+        )
+
     Jy = 1.51e7  # [photons sec^-1 m^-2 (dlambda/lambda)^-1]
-    photons = 0.16 * 1600 * Jy  # [photons sec^-1 m^-2] at mag 0
+    photons = dlam_lam * flux_m0 * Jy  # [photons sec^-1 m^-2] at mag 0
     return photons * 10 ** (-0.4 * mags)
 
 
@@ -336,7 +348,8 @@ def get_gaia_sources(
 
     if Filters.is_tmass(filter_band_instance.name):
         fluxes = tmass_mag_to_photons(
-            table[filter_band_instance.value].value.data  # type: ignore
+            table[filter_band_instance.value].value.data,  # type: ignore
+            filter_band_instance,
         )
     else:
         fluxes = table[filter_band_instance.value].value.data  # type: ignore
