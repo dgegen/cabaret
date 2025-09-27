@@ -52,6 +52,23 @@ class Sources:
         """Declination coordinates of the sources."""
         return self.coords.dec  # type: ignore
 
+    @property
+    def center(self) -> tuple[float, float]:
+        """Midpoint RA and DEC of the sources in degrees."""
+        ra_min, ra_max = self.ra.deg.min(), self.ra.deg.max()  # type: ignore
+        ra_range = ra_max - ra_min
+
+        if ra_range > 180:
+            ra_shifted = (self.ra.deg + 180) % 360  # type: ignore
+            ra_min, ra_max = ra_shifted.min(), ra_shifted.max()  # type: ignore
+            ra_center = (ra_min + ra_max) / 2 - 180
+            ra_center %= 360
+        else:
+            ra_center = (ra_min + ra_max) / 2
+
+        dec_center = (self.dec.deg.min() + self.dec.deg.max()) / 2  # type: ignore
+        return ra_center, dec_center
+
     def to_pixel(self, wcs: WCS) -> np.ndarray:
         """Convert the RA-DEC coordinates to pixel coordinates using the given WCS.
 

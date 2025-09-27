@@ -249,7 +249,7 @@ def add_stars(
         )  # [electrons]
 
         if ra is None or dec is None:
-            ra, dec = sources.ra.deg.mean(), sources.dec.deg.mean()
+            ra, dec = sources.center
 
         wcs = camera.get_wcs(SkyCoord(ra=ra, dec=dec, unit="deg"))
         gaias_pixel = sources.to_pixel(wcs)
@@ -283,10 +283,10 @@ def add_stars(
 
 def add_stars_and_sky(
     base: np.ndarray,
-    ra: float,
-    dec: float,
+    ra: float | None,
+    dec: float | None,
     exp_time: float,
-    dateobs: datetime,
+    dateobs: datetime | None,
     light: int,
     camera: Camera,
     focuser: Focuser,
@@ -300,6 +300,10 @@ def add_stars_and_sky(
 ) -> np.ndarray:
     """Add stars and sky background to the base image."""
     if light == 1:
+        if ra is None and dec is None and not isinstance(sources, Sources):
+            raise ValueError("Either ra/dec or sources must be provided for light.")
+        if ra is None or dec is None and isinstance(sources, Sources):
+            ra, dec = sources.center
         center = SkyCoord(ra=ra, dec=dec, unit="deg")
 
         assert camera.plate_scale is not None, "Camera plate scale must be set."
@@ -308,6 +312,8 @@ def add_stars_and_sky(
         radius = np.sqrt(fovx**2 + fovy**2) / 2
 
         logger.info("Querying Gaia for sources...")
+        if dateobs is None:
+            dateobs = datetime.now(UTC)
         sources = get_sources(
             center=center,
             radius=radius,
@@ -342,7 +348,7 @@ def generate_image(
     ra: float,
     dec: float,
     exp_time: float,
-    dateobs: datetime = datetime.now(UTC),
+    dateobs: datetime | None = None,
     light: int = 1,
     camera: Camera = Camera(),
     focuser: Focuser = Focuser(),
@@ -354,7 +360,6 @@ def generate_image(
     seed: int | None = None,
     timeout: float | None = None,
     sources: Sources | None = None,
-    apply_pixel_defects: bool = True,
 ) -> np.ndarray:
     """
     Generate a simulated astronomical image.
@@ -391,8 +396,6 @@ def generate_image(
         Timeout for Gaia query.
     sources : Sources or None, optional
         Precomputed sources to use instead of querying Gaia.
-    apply_pixel_defects : bool, optional
-        Whether to apply pixel defects to the image.
 
     Returns
     -------
@@ -428,8 +431,7 @@ def generate_image(
     else:
         image = base
 
-    if apply_pixel_defects:
-        image = camera.apply_pixel_defects(image, exp_time)
+    image = camera.apply_pixel_defects(image, exp_time)
 
     image = camera.to_adu_image(image)
 
@@ -440,7 +442,7 @@ def generate_image_stack(
     ra: float,
     dec: float,
     exp_time: float,
-    dateobs: datetime = datetime.now(UTC),
+    dateobs: datetime | None = None,
     light: int = 1,
     camera: Camera = Camera(),
     focuser: Focuser = Focuser(),
@@ -452,7 +454,7 @@ def generate_image_stack(
     seed: int | None = None,
     timeout: float | None = None,
     sources: Sources | None = None,
-    apply_pixel_defects: bool = True,
+    convert_all_to_adu: bool = False,
 ) -> np.ndarray:
     """
     Generate a stack of images from different stages in the image simulation pipeline.
@@ -489,8 +491,8 @@ def generate_image_stack(
         Timeout for Gaia query.
     sources : Sources or None, optional
         Precomputed sources to use instead of querying Gaia.
-    apply_pixel_defects : bool, optional
-        Whether to apply pixel defects to the image.
+    convert_all_to_adu : bool, optional
+        Whether to convert all images to ADU. Default is False.
 
     Returns
     -------
@@ -530,10 +532,13 @@ def generate_image_stack(
     else:
         image = base
 
-    if apply_pixel_defects:
-        adu_image = camera.apply_pixel_defects(image.copy(), exp_time)
+    adu_image = camera.apply_pixel_defects(image.copy(), exp_time)
 
     adu_image = camera.to_adu_image(adu_image)
+
+    if convert_all_to_adu:
+        base = camera.to_adu_image(base)
+        image = camera.to_adu_image(image)
 
     return np.stack([base, image, adu_image])
 
@@ -550,8 +555,8 @@ if __name__ == "__main__":
 
     # example usage
     image = generate_image(
-        323.36152,
-        -0.82325,
+        ra=323.36152,
+        dec=-0.82325,
         exp_time=exp_time,
         camera=camera,
         telescope=telescope,
