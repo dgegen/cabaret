@@ -170,7 +170,7 @@ def get_sources(
 ) -> Sources:
     """Get sources from Gaia or use provided sources."""
     if not isinstance(sources, Sources):
-        sources = GaiaQuery.get_gaia_sources(
+        sources = GaiaQuery.get_sources(
             center=center,
             radius=radius,
             dateobs=dateobs,
@@ -303,7 +303,7 @@ def add_stars_and_sky(
         if ra is None and dec is None and not isinstance(sources, Sources):
             raise ValueError("Either ra/dec or sources must be provided for light.")
         if ra is None or dec is None and isinstance(sources, Sources):
-            ra, dec = sources.center
+            ra, dec = sources.center  # type: ignore
         center = SkyCoord(ra=ra, dec=dec, unit="deg")
 
         assert camera.plate_scale is not None, "Camera plate scale must be set."
