@@ -1,0 +1,809 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" data-theme="light">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cabaret.queries &#8212; cabaret</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=eba8b062" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/style.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="../../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/cabaret/queries';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="light">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">cabaret</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../motivation.html">Motivation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../citation.html">Citation</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/configuring_an_observatory.html">Configuring an Observatory</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../cabaret.html">API</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Observatory.html">Observatory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Camera.html">Camera</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Focuser.html">Focuser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Telescope.html">Telescope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Site.html">Site</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Filters.html">Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.GaiaQuery.html">GaiaQuery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/cabaret.Sources.html">Sources</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../cabaret.camera.html">Pixel defects</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../generated/cabaret.camera.ConstantPixelDefect.html">ConstantPixelDefect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../generated/cabaret.camera.TelegraphicPixelDefect.html">TelegraphicPixelDefect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../generated/cabaret.camera.RandomNoisePixelDefect.html">RandomNoisePixelDefect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../generated/cabaret.camera.QuantumEfficiencyMapPixelDefect.html">QuantumEfficiencyMapPixelDefect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../generated/cabaret.camera.ReadoutSmearPixelDefect.html">ReadoutSmearPixelDefect</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/ppp-one/astra" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/ppp-one/astra/issues/new?title=Issue%20on%20page%20%2F_modules/cabaret/queries.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for cabaret.queries</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="ne">TimeoutError</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.coordinates</span> <span class="kn">import</span> <span class="n">Angle</span><span class="p">,</span> <span class="n">SkyCoord</span>
+<span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span>
+<span class="kn">from</span> <span class="nn">astropy.units</span> <span class="kn">import</span> <span class="n">Quantity</span>
+
+<span class="kn">from</span> <span class="nn">cabaret.sources</span> <span class="kn">import</span> <span class="n">Sources</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Filters&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GaiaQuery&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="Filters">
+<a class="viewcode-back" href="../../generated/cabaret.Filters.html#cabaret.Filters">[docs]</a>
+<span class="k">class</span> <span class="nc">Filters</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Allowed Gaia and 2MASS flux filter_band strings.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from cabaret.queries import Filters</span>
+<span class="sd">    &gt;&gt;&gt; Filters.G</span>
+<span class="sd">    &lt;Filters.G: &#39;phot_g_mean_flux&#39;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; Filters.from_string(&#39;RP&#39;)</span>
+<span class="sd">    &lt;Filters.RP: &#39;phot_rp_mean_flux&#39;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; Filters.is_tmass(&#39;J&#39;)</span>
+<span class="sd">    True</span>
+<span class="sd">    &gt;&gt;&gt; Filters.options()</span>
+<span class="sd">    (&#39;G&#39;, &#39;BP&#39;, &#39;RP&#39;, &#39;J&#39;, &#39;H&#39;, &#39;KS&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">G</span> <span class="o">=</span> <span class="s2">&quot;phot_g_mean_flux&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Gaia G band flux in [e-/s] &quot;&quot;&quot;</span>
+    <span class="n">BP</span> <span class="o">=</span> <span class="s2">&quot;phot_bp_mean_flux&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Gaia BP band flux in [e-/s] &quot;&quot;&quot;</span>
+    <span class="n">RP</span> <span class="o">=</span> <span class="s2">&quot;phot_rp_mean_flux&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Gaia RP band flux in [e-/s] &quot;&quot;&quot;</span>
+    <span class="n">J</span> <span class="o">=</span> <span class="s2">&quot;j_m&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; 2MASS J band magnitude &quot;&quot;&quot;</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="s2">&quot;h_m&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; 2MASS H band magnitude &quot;&quot;&quot;</span>
+    <span class="n">KS</span> <span class="o">=</span> <span class="s2">&quot;ks_m&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; 2MASS KS band magnitude &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Filters.options">
+<a class="viewcode-back" href="../../generated/cabaret.Filters.options.html#cabaret.Filters.options">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">options</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all valid filter_band options.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="Filters.from_string">
+<a class="viewcode-back" href="../../generated/cabaret.Filters.from_string.html#cabaret.Filters.from_string">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Filters&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the Filters enum member for a given string.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">[</span><span class="n">value</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Invalid filter_band string: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Valid options are: </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">options</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Filters.is_tmass">
+<a class="viewcode-back" href="../../generated/cabaret.Filters.is_tmass.html#cabaret.Filters.is_tmass">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_tmass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;Filters | str&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the filter_band string is a 2MASS filter_band.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;J&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;KS&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;J&quot;</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;KS&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Value must be an Filters enum or string, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Filters.ensure_enum">
+<a class="viewcode-back" href="../../generated/cabaret.Filters.ensure_enum.html#cabaret.Filters.ensure_enum">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">ensure_enum</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="s2">&quot;Filters | str&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Filters&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert a string or Filters to Filters enum.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Value must be a Filters enum or string, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Filters.is_valid">
+<a class="viewcode-back" href="../../generated/cabaret.Filters.is_valid.html#cabaret.Filters.is_valid">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the filter_band string is valid.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__members__</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GaiaQuery">
+<a class="viewcode-back" href="../../generated/cabaret.GaiaQuery.html#cabaret.GaiaQuery">[docs]</a>
+<span class="k">class</span> <span class="nc">GaiaQuery</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class to query the Gaia archive and retrieve sources.</span>
+
+<span class="sd">    The class provides methods to query Gaia and return either the raw Astropy Table</span>
+<span class="sd">    or a Sources instance with RA-DEC coordinates and fluxes.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from cabaret.queries import GaiaQuery</span>
+<span class="sd">    &gt;&gt;&gt; from astropy.coordinates import SkyCoord</span>
+<span class="sd">    &gt;&gt;&gt; center = SkyCoord(ra=10.68458, dec=41.269, unit=&quot;deg&quot;)</span>
+
+<span class="sd">    The Astropy Table from Gaia can be obtained with:</span>
+
+<span class="sd">    &gt;&gt;&gt; table = GaiaQuery.query(center, radius=0.05, limit=10, timeout=30)</span>
+
+<span class="sd">    Whereas a Sources instance carrying coordinates and fluxes can be queried for with:</span>
+
+<span class="sd">    &gt;&gt;&gt; sources = GaiaQuery.get_sources(center, radius=0.05, limit=10, timeout=30)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GaiaQuery.query">
+<a class="viewcode-back" href="../../generated/cabaret.GaiaQuery.query.html#cabaret.GaiaQuery.query">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span>
+        <span class="n">center</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">SkyCoord</span><span class="p">,</span>
+        <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Angle</span><span class="p">,</span>
+        <span class="n">filter_band</span><span class="p">:</span> <span class="n">Filters</span> <span class="o">=</span> <span class="n">Filters</span><span class="o">.</span><span class="n">G</span><span class="p">,</span>
+        <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Table</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Query Gaia Archive within a given radius around the center position.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        center : tuple or astropy.coordinates.SkyCoord</span>
+<span class="sd">            The sky coordinates of the center of the FOV.</span>
+<span class="sd">            If a tuple is given, it should contain the RA and DEC in degrees.</span>
+<span class="sd">        radius : float or astropy.units.Quantity</span>
+<span class="sd">            The radius of the FOV in degrees. If a Quantity is given, it must be</span>
+<span class="sd">            convertible to degrees.¨</span>
+<span class="sd">        filter_band : Filters or str, optional</span>
+<span class="sd">            The filter to use for the flux column. Default is Filters.G.</span>
+<span class="sd">        limit : int, optional</span>
+<span class="sd">            The maximum number of sources to retrieve from the Gaia archive.</span>
+<span class="sd">            By default, it is set to 100000.</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            The maximum time to wait for the Gaia query to complete, in seconds.</span>
+<span class="sd">            If None, there is no timeout. By default, it is set to None.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        astropy.table.Table</span>
+<span class="sd">            The raw Astropy Table returned by the Gaia archive.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+<span class="sd">        &gt;&gt;&gt; from cabaret.queries import GaiaQuery</span>
+<span class="sd">        &gt;&gt;&gt; from astropy.coordinates import SkyCoord</span>
+<span class="sd">        &gt;&gt;&gt; center = SkyCoord(ra=10.68458, dec=41.26917, unit=&#39;deg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; table = GaiaQuery.query(center, radius=0.1, limit=10, timeout=30)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filter_band</span> <span class="o">=</span> <span class="n">Filters</span><span class="o">.</span><span class="n">ensure_enum</span><span class="p">(</span><span class="n">filter_band</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="n">SkyCoord</span><span class="p">):</span>
+            <span class="n">ra</span> <span class="o">=</span> <span class="n">center</span><span class="o">.</span><span class="n">ra</span><span class="o">.</span><span class="n">deg</span>  <span class="c1"># type: ignore</span>
+            <span class="n">dec</span> <span class="o">=</span> <span class="n">center</span><span class="o">.</span><span class="n">dec</span><span class="o">.</span><span class="n">deg</span>  <span class="c1"># type: ignore</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">center</span>
+
+        <span class="n">gaia_flux_column</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">filter_band</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">Filters</span><span class="o">.</span><span class="n">is_tmass</span><span class="p">(</span><span class="n">filter_band</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">else</span> <span class="n">Filters</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">value</span>
+        <span class="p">)</span>
+        <span class="n">select_cols</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;gaia.ra&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gaia.dec&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gaia.pmra&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gaia.pmdec&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">gaia_flux_column</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="n">joins</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">order_by</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> DESC&quot;</span>  <span class="c1"># Prefer brighter stars</span>
+
+        <span class="k">if</span> <span class="n">Filters</span><span class="o">.</span><span class="n">is_tmass</span><span class="p">(</span><span class="n">filter_band</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">select_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">joins</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="s2">&quot;INNER JOIN gaiadr2.tmass_best_neighbour AS tmass_match &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;ON tmass_match.source_id = gaia.source_id&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;INNER JOIN gaiadr1.tmass_original_valid AS tmass &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;ON tmass.tmass_oid = tmass_match.tmass_oid&quot;</span><span class="p">,</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">order_by</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> ASC&quot;</span>
+            <span class="n">where</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> IS NOT NULL&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">where</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> IS NOT NULL&quot;</span><span class="p">)</span>
+
+        <span class="n">radius</span> <span class="o">=</span> <span class="n">radius</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">radius</span><span class="p">,</span> <span class="n">Quantity</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span>
+        <span class="n">where</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;1=CONTAINS(POINT(&#39;ICRS&#39;, </span><span class="si">{</span><span class="n">ra</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">dec</span><span class="si">}</span><span class="s2">), &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;CIRCLE(&#39;ICRS&#39;, gaia.ra, gaia.dec, </span><span class="si">{</span><span class="n">radius</span><span class="si">}</span><span class="s2">))&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">select_clause</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">select_cols</span><span class="p">)</span>
+        <span class="n">joins_clause</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">joins</span><span class="p">)</span>
+        <span class="n">where_clause</span> <span class="o">=</span> <span class="s2">&quot; AND &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">where</span><span class="p">)</span>
+
+        <span class="n">query</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT TOP </span><span class="si">{</span><span class="n">limit</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">select_clause</span><span class="si">}</span>
+<span class="s2">        FROM gaiadr2.gaia_source AS gaia</span>
+<span class="s2">        </span><span class="si">{</span><span class="n">joins_clause</span><span class="si">}</span>
+<span class="s2">        WHERE </span><span class="si">{</span><span class="n">where_clause</span><span class="si">}</span>
+<span class="s2">        ORDER BY </span><span class="si">{</span><span class="n">order_by</span><span class="si">}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+        <span class="n">table</span> <span class="o">=</span> <span class="n">GaiaQuery</span><span class="o">.</span><span class="n">_launch_job_with_timeout</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">table</span></div>
+
+
+<div class="viewcode-block" id="GaiaQuery.get_sources">
+<a class="viewcode-back" href="../../generated/cabaret.GaiaQuery.get_sources.html#cabaret.GaiaQuery.get_sources">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_sources</span><span class="p">(</span>
+        <span class="n">center</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">SkyCoord</span><span class="p">,</span>
+        <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Angle</span><span class="p">,</span>
+        <span class="n">filter_band</span><span class="p">:</span> <span class="n">Filters</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Filters</span><span class="o">.</span><span class="n">G</span><span class="p">,</span>
+        <span class="n">dateobs</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sources</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Query the Gaia archive to retrieve the RA-DEC coordinates of stars</span>
+<span class="sd">        within a given radius of a center position, along with their fluxes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        center : tuple or astropy.coordinates.SkyCoord</span>
+<span class="sd">            The sky coordinates of the center of the FOV.</span>
+<span class="sd">            If a tuple is given, it should contain the RA and DEC in degrees.</span>
+<span class="sd">        radius : float or astropy.units.Quantity</span>
+<span class="sd">            The radius of the FOV in degrees. If a Quantity is given, it must be</span>
+<span class="sd">            convertible to degrees.</span>
+<span class="sd">        filter_band : Filters or str, optional</span>
+<span class="sd">            The filter to use for the flux column. Default is Filters.G.</span>
+<span class="sd">        dateobs : datetime.datetime, optional</span>
+<span class="sd">            The date of the observation. If given, the proper motions of the sources</span>
+<span class="sd">            will be taken into account. By default, it is set to None.</span>
+<span class="sd">        limit : int, optional</span>
+<span class="sd">            The maximum number of sources to retrieve from the Gaia archive.</span>
+<span class="sd">            By default, it is set to 10000.</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            The maximum time to wait for the Gaia query to complete, in seconds.</span>
+<span class="sd">            If None, there is no timeout. By default, it is set to None.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Sources</span>
+<span class="sd">            A Sources instance containing the coordinates and fluxes of the retrieved</span>
+<span class="sd">            sources.</span>
+
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        If `filter_band` is a 2MASS filter (J, H, KS), the fluxes are calculated</span>
+<span class="sd">        from the 2MASS magnitudes using `cabaret.queries.tmass_mag_to_photons`.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ImportError</span>
+<span class="sd">            If the astroquery package is not installed.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; from cabaret.queries import GaiaQuery</span>
+<span class="sd">        &gt;&gt;&gt; from astropy.coordinates import SkyCoord</span>
+<span class="sd">        &gt;&gt;&gt; center = SkyCoord(ra=10.68458, dec=41.26917, unit=&#39;deg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; sources = GaiaQuery.get_sources(</span>
+<span class="sd">        ...     center, radius=0.1, timeout=30</span>
+<span class="sd">        ... )  # doctest: +SKIP</span>
+<span class="sd">        Sources(coords=&lt;SkyCoord (ICRS): (ra, dec) in deg</span>
+<span class="sd">            [(10.63950247, 41.26393165), (10.6880729 , 41.22524785),</span>
+<span class="sd">            (10.70349581, 41.25357386), (10.70022208, 41.26019689),</span>
+<span class="sd">            (10.71333998, 41.29943347), (10.73974676, 41.2942209 ),</span>
+<span class="sd">            (10.71181048, 41.29130279), (10.68780207, 41.31717482),</span>
+<span class="sd">            (10.63804045, 41.27468757), (10.64397532, 41.25237352)]&gt;, fluxes=array(</span>
+<span class="sd">                [169435.62814443,  52203.9396396 ,  41716.18126449,  29035.89106422,</span>
+<span class="sd">                22990.85994301,  17672.53437883,  15953.21022642,  15077.12262318,</span>
+<span class="sd">                14004.42013396,  12271.11779953]))</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filter_band</span> <span class="o">=</span> <span class="n">Filters</span><span class="o">.</span><span class="n">ensure_enum</span><span class="p">(</span><span class="n">filter_band</span><span class="p">)</span>
+
+        <span class="n">table</span> <span class="o">=</span> <span class="n">GaiaQuery</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+            <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+            <span class="n">filter_band</span><span class="o">=</span><span class="n">filter_band</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dateobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="n">GaiaQuery</span><span class="o">.</span><span class="n">_apply_proper_motion</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">dateobs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">Filters</span><span class="o">.</span><span class="n">is_tmass</span><span class="p">(</span><span class="n">filter_band</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">fluxes</span> <span class="o">=</span> <span class="n">GaiaQuery</span><span class="o">.</span><span class="n">_tmass_mag_to_photons</span><span class="p">(</span>
+                <span class="n">table</span><span class="p">[</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+                <span class="n">filter_band</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fluxes</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">filter_band</span><span class="o">.</span><span class="n">value</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">data</span>  <span class="c1"># type: ignore</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">remove_rows</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">fluxes</span><span class="p">))</span>
+        <span class="n">fluxes</span> <span class="o">=</span> <span class="n">fluxes</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">fluxes</span><span class="p">)]</span>
+
+        <span class="k">return</span> <span class="n">Sources</span><span class="o">.</span><span class="n">from_arrays</span><span class="p">(</span>
+            <span class="n">ra</span><span class="o">=</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+            <span class="n">dec</span><span class="o">=</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+            <span class="n">fluxes</span><span class="o">=</span><span class="n">fluxes</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_launch_job_with_timeout</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Table</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Launch a Gaia job and return its results, optionally enforcing a timeout.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        query : str</span>
+<span class="sd">            The query string passed to Gaia.launch_job.</span>
+<span class="sd">        timeout : float or None, optional</span>
+<span class="sd">            Maximum number of seconds to wait for Gaia.launch_job to complete.</span>
+<span class="sd">            If None, the job is run on the main thread (no thread overhead).</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional keyword arguments forwarded to Gaia.launch_job.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        object</span>
+<span class="sd">            The result returned by job.get_results().</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TimeoutError</span>
+<span class="sd">            If `timeout` is not None and the call does not complete within `timeout`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">astroquery.gaia</span> <span class="kn">import</span> <span class="n">Gaia</span>
+
+        <span class="c1"># Run directly on the main thread when no timeout is requested to avoid</span>
+        <span class="c1"># unnecessary thread creation and to preserve original callstacks/tracebacks.</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">job</span> <span class="o">=</span> <span class="n">Gaia</span><span class="o">.</span><span class="n">launch_job</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">job</span><span class="o">.</span><span class="n">get_results</span><span class="p">()</span>  <span class="c1"># type: ignore</span>
+
+        <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">()</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+            <span class="n">future</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">Gaia</span><span class="o">.</span><span class="n">launch_job</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">job</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">job</span><span class="o">.</span><span class="n">get_results</span><span class="p">()</span>  <span class="c1"># type: ignore</span>
+            <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span>
+                    <span class="s2">&quot;Gaia query timed out.&quot;</span>
+                    <span class="s2">&quot; You may want to increase the timeout or reduce the query size.&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Query was: </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_tmass_mag_to_photons</span><span class="p">(</span><span class="n">mags</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">filter_band</span><span class="p">:</span> <span class="n">Filters</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert 2MASS J magnitudes to photon fluxes at mag 0.</span>
+
+<span class="sd">        Reference: https://lweb.cfa.harvard.edu/~dfabricant/huchra/ay145/mags.html</span>
+<span class="sd">        Returns photons/sec/m^2 for each magnitude.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Use a dict for 2MASS filter properties</span>
+        <span class="n">dlam_lam_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;J&quot;</span><span class="p">:</span> <span class="mf">0.16</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">:</span> <span class="mf">0.23</span><span class="p">,</span> <span class="s2">&quot;KS&quot;</span><span class="p">:</span> <span class="mf">0.23</span><span class="p">}</span>
+        <span class="n">flux_m0_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;J&quot;</span><span class="p">:</span> <span class="mi">1600</span><span class="p">,</span> <span class="s2">&quot;H&quot;</span><span class="p">:</span> <span class="mi">1080</span><span class="p">,</span> <span class="s2">&quot;KS&quot;</span><span class="p">:</span> <span class="mi">670</span><span class="p">}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">dlam_lam</span> <span class="o">=</span> <span class="n">dlam_lam_map</span><span class="p">[</span><span class="n">filter_band</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">flux_m0</span> <span class="o">=</span> <span class="n">flux_m0_map</span><span class="p">[</span><span class="n">filter_band</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;tmass_mag_to_photons expects a 2MASS filter (J,H,KS), &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">filter_band</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">Jy</span> <span class="o">=</span> <span class="mf">1.51e7</span>  <span class="c1"># [photons sec^-1 m^-2 (dlambda/lambda)^-1]</span>
+        <span class="n">photons</span> <span class="o">=</span> <span class="n">dlam_lam</span> <span class="o">*</span> <span class="n">flux_m0</span> <span class="o">*</span> <span class="n">Jy</span>  <span class="c1"># [photons sec^-1 m^-2] at mag 0</span>
+        <span class="k">return</span> <span class="n">photons</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">mags</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_apply_proper_motion</span><span class="p">(</span><span class="n">table</span><span class="p">:</span> <span class="n">Table</span><span class="p">,</span> <span class="n">dateobs</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply proper motion correction to RA and DEC columns</span>
+<span class="sd">        for the given observation date.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dateobs_frac</span> <span class="o">=</span> <span class="n">dateobs</span><span class="o">.</span><span class="n">year</span> <span class="o">+</span> <span class="p">(</span><span class="n">dateobs</span><span class="o">.</span><span class="n">timetuple</span><span class="p">()</span><span class="o">.</span><span class="n">tm_yday</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">365.25</span>  <span class="c1"># type: ignore</span>
+        <span class="n">years</span> <span class="o">=</span> <span class="n">dateobs_frac</span> <span class="o">-</span> <span class="mf">2015.5</span>  <span class="c1"># type: ignore</span>
+        <span class="n">table</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">years</span> <span class="o">*</span> <span class="n">table</span><span class="p">[</span><span class="s2">&quot;pmra&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span> <span class="o">/</span> <span class="mi">3600</span>  <span class="c1"># type: ignore</span>
+        <span class="n">table</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">years</span> <span class="o">*</span> <span class="n">table</span><span class="p">[</span><span class="s2">&quot;pmdec&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span> <span class="o">/</span> <span class="mi">3600</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">table</span></div>
+
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Peter Pihlmann, Lionel Garcia, David Degen
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, Peter Pedersen, Lionel Garcia, David Degen.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
