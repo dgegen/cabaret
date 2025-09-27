@@ -25,13 +25,14 @@ The `Observatory` class encapsulates the configuration of all key devices at an 
    cabaret.Site
 ```
 
-A special feature is the `Camera` class are pixel defects, which are covered [`here`](cabaret.camera.html).
+A notable feature of the Camera class is its support for pixel defects, which are documented in the {doc}`pixel defects <cabaret.camera>` section.
 
 ## Generating images
 
 The simulation of images uses two important concepts:
 
 - **Filters**: Photometric bands (e.g., G, R, I) that determine the wavelength range in which the catalog fluxes are extracted for the simulation.
+- **GaiaQuery**: GaiaQuery: Provides methods to query star catalogs such as Gaia and 2MASS, returning tables or ready-to-use Sources objects for simulations.
 - **Sources**: Representations of stars with positions and fluxes, either queried from catalogs or provided directly.
 
 ```{eval-rst}
@@ -40,6 +41,7 @@ The simulation of images uses two important concepts:
    :template: class.rst
 
    cabaret.Filters
+   cabaret.GaiaQuery
    cabaret.Sources
 ```
 
