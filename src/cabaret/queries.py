@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 
 import numpy as np
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 from astropy.table import Table
 from astropy.units import Quantity
 from astroquery.gaia import Gaia
@@ -161,7 +161,7 @@ def gaia_launch_job_with_timeout(query, timeout=None, **kwargs) -> Table:
 
 def gaia_query(
     center: tuple[float, float] | SkyCoord,
-    radius: float | Quantity,
+    radius: float | Angle,
     limit: int = 100000,
     timeout: float | None = None,
     filter_band: Filters = Filters.G,
@@ -207,8 +207,8 @@ def gaia_query(
                 + "ON tmass.tmass_oid = tmass_match.tmass_oid",
             ]
         )
-        order_by = f"{filter_band.value} ASC"  # <-- fix here
-        where.append(f"{filter_band.value} IS NOT NULL")  # <-- fix here
+        order_by = f"{filter_band.value} ASC"
+        where.append(f"{filter_band.value} IS NOT NULL")
     else:
         where.append(f"{filter_band.value} IS NOT NULL")
 
@@ -247,7 +247,7 @@ def apply_proper_motion(table: Table, dateobs: datetime):
 
 def get_gaia_sources(
     center: tuple[float, float] | SkyCoord,
-    radius: float | Quantity,
+    radius: float | Angle,
     limit: int = 100000,
     dateobs: datetime | None = None,
     timeout: float | None = None,
