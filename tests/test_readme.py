@@ -1,3 +1,9 @@
+import pytest
+
+from .utils import has_internet
+
+
+@pytest.mark.skipif(not has_internet(), reason="Requires internet")
 def test_readme_1():
     import cabaret
 
@@ -12,6 +18,7 @@ def test_readme_1():
     ), f"Expected image shape (1024, 1024), but got {image.shape}"
 
 
+@pytest.mark.skipif(not has_internet(), reason="Requires internet")
 def test_readme_2():
     import cabaret
     from cabaret import Camera

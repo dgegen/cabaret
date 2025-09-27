@@ -13,30 +13,29 @@ import cabaret.site
 import cabaret.sources
 import cabaret.telescope
 
+from .utils import has_internet
+
 pytestmark = pytest.mark.filterwarnings("ignore:.*FigureCanvasAgg.*:UserWarning")
 
 
 @pytest.mark.parametrize(
     "mod",
     [
-        cabaret.sources,
-        cabaret.queries,
-        cabaret.camera,
-        cabaret.site,
-        cabaret.focuser,
-        cabaret.telescope,
-        cabaret.observatory,
-        cabaret.queries,
-    ],
-    ids=[
-        cabaret.sources.__name__,
-        cabaret.queries.__name__,
-        cabaret.camera.__name__,
-        cabaret.site.__name__,
-        cabaret.focuser.__name__,
-        cabaret.telescope.__name__,
-        cabaret.observatory.__name__,
-        cabaret.queries.__name__,
+        pytest.param(cabaret.sources, id=cabaret.sources.__name__),
+        pytest.param(
+            cabaret.queries,
+            marks=pytest.mark.skipif(not has_internet(), reason="Requires internet"),
+            id=cabaret.queries.__name__,
+        ),
+        pytest.param(cabaret.camera, id=cabaret.camera.__name__),
+        pytest.param(cabaret.site, id=cabaret.site.__name__),
+        pytest.param(cabaret.focuser, id=cabaret.focuser.__name__),
+        pytest.param(cabaret.telescope, id=cabaret.telescope.__name__),
+        pytest.param(
+            cabaret.observatory,
+            marks=pytest.mark.skipif(not has_internet(), reason="Requires internet"),
+            id=cabaret.observatory.__name__,
+        ),
     ],
 )
 def test_doctests(mod):

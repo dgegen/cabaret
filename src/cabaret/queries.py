@@ -6,7 +6,6 @@ import numpy as np
 from astropy.coordinates import Angle, SkyCoord
 from astropy.table import Table
 from astropy.units import Quantity
-from astroquery.gaia import Gaia
 
 from cabaret.sources import Sources
 
@@ -105,22 +104,22 @@ class GaiaQuery:
 
     The Astropy Table from Gaia can be obtained with:
 
-    >>> table = GaiaQuery.gaia_query(center, radius=0.05, limit=10, timeout=30)
+    >>> table = GaiaQuery.query(center, radius=0.05, limit=10, timeout=30)
 
-    Whereas a Sources instance carrying coordinates and fluxes can be obtained with:
+    Whereas a Sources instance carrying coordinates and fluxes can be queried for with:
 
-    >>> sources = GaiaQuery.get_gaia_sources(center, radius=0.05, limit=10, timeout=30)
+    >>> sources = GaiaQuery.get_sources(center, radius=0.05, limit=10, timeout=30)
     """
 
     @staticmethod
-    def gaia_query(
+    def query(
         center: tuple[float, float] | SkyCoord,
         radius: float | Angle,
+        filter_band: Filters = Filters.G,
         limit: int = 100000,
         timeout: float | None = None,
-        filter_band: Filters = Filters.G,
     ) -> Table:
-        """Query Gaia and return the raw Astropy Table.
+        """Query Gaia Archive within a given radius around the center position.
 
         Parameters
         ----------
@@ -129,12 +128,12 @@ class GaiaQuery:
             If a tuple is given, it should contain the RA and DEC in degrees.
         radius : float or astropy.units.Quantity
             The radius of the FOV in degrees. If a Quantity is given, it must be
-            convertible to degrees.
+            convertible to degrees.¨
+        filter_band : Filters or str, optional
+            The filter to use for the flux column. Default is Filters.G.
         limit : int, optional
             The maximum number of sources to retrieve from the Gaia archive.
             By default, it is set to 100000.
-        filter_band : Filters or str, optional
-            The filter to use for the flux column. Default is Filters.G.
         timeout : float, optional
             The maximum time to wait for the Gaia query to complete, in seconds.
             If None, there is no timeout. By default, it is set to None.
@@ -149,7 +148,7 @@ class GaiaQuery:
         >>> from cabaret.queries import GaiaQuery
         >>> from astropy.coordinates import SkyCoord
         >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
-        >>> table = GaiaQuery.gaia_query(center, radius=0.1, limit=10, timeout=30)
+        >>> table = GaiaQuery.query(center, radius=0.1, limit=10, timeout=30)
         """
         filter_band = Filters.ensure_enum(filter_band)
 
@@ -190,10 +189,10 @@ class GaiaQuery:
         else:
             where.append(f"{filter_band.value} IS NOT NULL")
 
-        radius_val = radius.value if isinstance(radius, Quantity) else float(radius)
+        radius = radius.value if isinstance(radius, Quantity) else float(radius)
         where.append(
             f"1=CONTAINS(POINT('ICRS', {ra}, {dec}), "
-            f"CIRCLE('ICRS', gaia.ra, gaia.dec, {radius_val}))"
+            f"CIRCLE('ICRS', gaia.ra, gaia.dec, {radius}))"
         )
 
         select_clause = ", ".join(select_cols)
@@ -208,21 +207,21 @@ class GaiaQuery:
         ORDER BY {order_by}
         """
 
-        table = GaiaQuery._gaia_launch_job_with_timeout(query, timeout=timeout)
+        table = GaiaQuery._launch_job_with_timeout(query, timeout=timeout)
         return table
 
     @staticmethod
-    def get_gaia_sources(
+    def get_sources(
         center: tuple[float, float] | SkyCoord,
         radius: float | Angle,
-        limit: int = 100000,
-        dateobs: datetime | None = None,
-        timeout: float | None = None,
         filter_band: Filters | str = Filters.G,
+        dateobs: datetime | None = None,
+        limit: int = 100000,
+        timeout: float | None = None,
     ) -> Sources:
         """
         Query the Gaia archive to retrieve the RA-DEC coordinates of stars
-        within a given field-of-view (FOV) centered on a given sky position.
+        within a given radius of a center position, along with their fluxes.
 
         Parameters
         ----------
@@ -232,14 +231,14 @@ class GaiaQuery:
         radius : float or astropy.units.Quantity
             The radius of the FOV in degrees. If a Quantity is given, it must be
             convertible to degrees.
-        limit : int, optional
-            The maximum number of sources to retrieve from the Gaia archive.
-            By default, it is set to 10000.
+        filter_band : Filters or str, optional
+            The filter to use for the flux column. Default is Filters.G.
         dateobs : datetime.datetime, optional
             The date of the observation. If given, the proper motions of the sources
             will be taken into account. By default, it is set to None.
-        filter_band : Filters or str, optional
-            The filter to use for the flux column. Default is Filters.G.
+        limit : int, optional
+            The maximum number of sources to retrieve from the Gaia archive.
+            By default, it is set to 10000.
         timeout : float, optional
             The maximum time to wait for the Gaia query to complete, in seconds.
             If None, there is no timeout. By default, it is set to None.
@@ -266,7 +265,7 @@ class GaiaQuery:
         >>> from cabaret.queries import GaiaQuery
         >>> from astropy.coordinates import SkyCoord
         >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
-        >>> sources = GaiaQuery.get_gaia_sources(
+        >>> sources = GaiaQuery.get_sources(
         ...     center, radius=0.1, timeout=30
         ... )  # doctest: +SKIP
         Sources(coords=<SkyCoord (ICRS): (ra, dec) in deg
@@ -280,26 +279,26 @@ class GaiaQuery:
                 14004.42013396,  12271.11779953]))
 
         """
-        filter_band_instance = Filters.ensure_enum(filter_band)
+        filter_band = Filters.ensure_enum(filter_band)
 
-        table = GaiaQuery.gaia_query(
+        table = GaiaQuery.query(
             center=center,
             radius=radius,
             limit=limit,
             timeout=timeout,
-            filter_band=filter_band_instance,
+            filter_band=filter_band,
         )
 
         if dateobs is not None:
             table = GaiaQuery._apply_proper_motion(table, dateobs)
 
-        if Filters.is_tmass(filter_band_instance.name):
+        if Filters.is_tmass(filter_band.name):
             fluxes = GaiaQuery._tmass_mag_to_photons(
-                table[filter_band_instance.value].value.data,  # type: ignore
-                filter_band_instance,
+                table[filter_band.value].value.data,  # type: ignore
+                filter_band,
             )
         else:
-            fluxes = table[filter_band_instance.value].value.data  # type: ignore
+            fluxes = table[filter_band.value].value.data  # type: ignore
         table.remove_rows(np.isnan(fluxes))
         fluxes = fluxes[~np.isnan(fluxes)]
 
@@ -310,7 +309,7 @@ class GaiaQuery:
         )
 
     @staticmethod
-    def _gaia_launch_job_with_timeout(query, timeout=None, **kwargs) -> Table:
+    def _launch_job_with_timeout(query, timeout=None, **kwargs) -> Table:
         """
         Launch a Gaia job and return its results, optionally enforcing a timeout.
 
@@ -334,6 +333,8 @@ class GaiaQuery:
         TimeoutError
             If `timeout` is not None and the call does not complete within `timeout`.
         """
+        from astroquery.gaia import Gaia
+
         # Run directly on the main thread when no timeout is requested to avoid
         # unnecessary thread creation and to preserve original callstacks/tracebacks.
         if timeout is None:
