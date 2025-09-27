@@ -31,7 +31,7 @@ docs = [
   "numpydoc"
 ]
 plot = ["matplotlib"]
-test = ["pytest"]
+test = ["pytest", "matplotlib"]
 
 [tool.hatch.version]
 source = "vcs"

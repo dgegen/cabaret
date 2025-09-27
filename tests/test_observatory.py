@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 import pytest
+from astropy.io import fits
 
 from cabaret.camera import Camera
 from cabaret.focuser import Focuser
@@ -53,6 +54,27 @@ def test_generate_image():
         ra=12.3323, dec=30.4343, exp_time=10, dateobs=dateobs, seed=0
     )
     assert img is not None
+
+
+def test_generate_fits_image():
+    observatory = Observatory()
+    hdu_list = observatory.generate_fits_image(
+        ra=12.3323, dec=30.4343, exp_time=10, seed=0
+    )
+    assert isinstance(hdu_list, fits.HDUList)
+
+
+def test_generate_fits_image_with_file_path(tmp_path):
+    observatory = Observatory()
+    file_path = tmp_path / "test_image.fits"
+    hdu_list = observatory.generate_fits_image(
+        ra=12.3323, dec=30.4343, exp_time=10, file_path=file_path, seed=0
+    )
+    assert isinstance(hdu_list, fits.HDUList)
+    assert file_path.exists()
+    loaded_hdu_list = fits.open(file_path)
+    assert len(loaded_hdu_list) == len(hdu_list)
+    loaded_hdu_list.close()
 
 
 def test_to_dict():

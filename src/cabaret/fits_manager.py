@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from astropy.io import fits
 
 
@@ -28,49 +29,69 @@ class FITSManager:
 
     @staticmethod
     def save(
-        image,
-        file_path: str | Path,
         observatory,
+        file_path: str | Path,
+        hdu_list: fits.HDUList | None = None,
+        image: np.ndarray | None = None,
+        user_header: dict[str, Any] | fits.Header | None = None,
         exp_time: float | None = None,
         ra: float | None = None,
         dec: float | None = None,
         dateobs: datetime | None = None,
         light: int | None = None,
-        user_header: dict[str, Any] | fits.Header | None = None,
         overwrite: bool = True,
-    ):
+    ) -> fits.HDUList:
         """
         Save a numpy array image to a FITS file using observatory metadata.
 
         Parameters
         ----------
-        image : numpy.ndarray
-            The image data to save.
-        file_path : str
-            The path to the FITS file to write.
         observatory : Observatory
             The observatory instance for header metadata.
-        exp_time, ra, dec, dateobs, light, user_header : optional
-            Passed to get_fits_from_array.
+        file_path : str
+            The path to the FITS file to write.
+        hdu_list : fits.HDUList, optional
+            An existing HDUList to save. If provided, image and header parameters
+            are ignored.
+        image : numpy.ndarray
+            The image data to save.
+        user_header : dict or fits.Header, optional
+            Additional header keywords to add.
+        exp_time : float, optional
+            Exposure time in seconds. Passed to the header.
+        ra : float, optional
+            Right ascension of the image center in degrees. Passed to the header.
+        dec : float, optional
+            Declination of the image center in degrees. Passed to the header.
+        dateobs : datetime, optional
+            The observation date and time. Passed to the header.
+        light : int, optional
+            Light pollution level (1-5). Passed to the header.
         overwrite : bool, optional
             Whether to overwrite existing file (default: True).
         """
-        hdul = FITSManager.to_hdu_list(
-            image=image,
-            observatory=observatory,
-            exp_time=exp_time,
-            ra=ra,
-            dec=dec,
-            dateobs=dateobs,
-            light=light,
-            user_header=user_header,
-        )
-        hdul.writeto(file_path, overwrite=overwrite)
+        if hdu_list is None:
+            hdu_list = FITSManager.to_hdu_list(
+                image=image,
+                observatory=observatory,
+                exp_time=exp_time,
+                ra=ra,
+                dec=dec,
+                dateobs=dateobs,
+                light=light,
+                user_header=user_header,
+            )
+        elif not isinstance(hdu_list, fits.HDUList):
+            raise TypeError("hdu_list must be an instance of fits.HDUList.")
+
+        hdu_list.writeto(file_path, overwrite=overwrite)
+
+        return hdu_list
 
     @staticmethod
     def to_hdu_list(
-        image,
         observatory,
+        image,
         exp_time: float | None = None,
         ra: float | None = None,
         dec: float | None = None,
@@ -83,10 +104,10 @@ class FITSManager:
 
         Parameters
         ----------
-        image : numpy.ndarray
-            The image data to convert to FITS.
         observatory : Observatory
             The observatory instance for header metadata.
+        image : numpy.ndarray
+            The image data to convert to FITS.
         exp_time : float, optional
             Exposure time in seconds.
         ra : float, optional
@@ -142,7 +163,7 @@ class FITSManager:
     @staticmethod
     def get_header_from_observatory(
         observatory,
-        user_header: dict[str, Any] | None = None,
+        user_header: dict[str, Any] | fits.Header | None = None,
     ) -> "fits.Header":
         """
         Create a FITS header populated with metadata from an Observatory instance.
@@ -159,11 +180,6 @@ class FITSManager:
         fits.Header
             The populated FITS header.
         """
-        try:
-            from astropy.io import fits
-        except ImportError:
-            raise ImportError("Please install astropy to use FITSHeaderBuilder.")
-
         header = fits.Header()
         header["OBSNAME"] = (observatory.name, "Observatory name")
 

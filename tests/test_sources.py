@@ -54,3 +54,20 @@ def test_sources_from_array():
     assert np.allclose(sources.ra.deg, COORDS[:, 0])
     assert np.allclose(sources.dec.deg, COORDS[:, 1])
     assert np.allclose(sources.fluxes, FLUXES)
+
+
+def test_center():
+    coords = SkyCoord(ra=[179.999, 180.001], dec=[10.68, 10.689], unit="deg")
+    sources = Sources(coords, fluxes=np.array([169_435.6, 92_203.9]))
+
+    ra_center, dec_center = sources.center
+    assert np.isclose(ra_center, 180.0)
+    assert np.isclose(dec_center, 10.6845)
+
+
+def test_center_with_wrap():
+    coords = SkyCoord(ra=[359.999, 0.001], dec=[10.68, 10.689], unit="deg")
+    sources = Sources(coords, fluxes=np.array([169_435.6, 92_203.9]))
+
+    ra_center, _ = sources.center
+    assert np.isclose(ra_center, 0.0)

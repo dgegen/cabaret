@@ -173,7 +173,7 @@ def gaia_query(
     >>> from cabaret.queries import gaia_query
     >>> from astropy.coordinates import SkyCoord
     >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
-    >>> table = gaia_query(center, fov=0.1, limit=10, timeout=30)
+    >>> table = gaia_query(center, radius=0.1, limit=10, timeout=30)
     """
     filter_band = Filters.ensure_enum(filter_band)
 
@@ -299,7 +299,7 @@ def get_gaia_sources(
     >>> from cabaret.queries import get_gaia_sources
     >>> from astropy.coordinates import SkyCoord
     >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
-    >>> sources = get_gaia_sources(center, fov=0.1, timeout=30)
+    >>> sources = get_gaia_sources(center, radius=0.1, timeout=30)  # doctest: +SKIP
     Sources(coords=<SkyCoord (ICRS): (ra, dec) in deg
         [(10.63950247, 41.26393165), (10.6880729 , 41.22524785),
         (10.70349581, 41.25357386), (10.70022208, 41.26019689),
