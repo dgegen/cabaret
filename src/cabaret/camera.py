@@ -4,6 +4,7 @@ from typing import Literal
 
 import numpy as np
 import numpy.random
+from astropy.coordinates import Angle
 from astropy.wcs import WCS
 
 
@@ -18,14 +19,14 @@ class Camera:
 
     >>> from cabaret import Camera, Observatory, Sources
     >>> pixel_defects = {
-    ...     "hot": {"type": "constant", "value": 10_000, "rate": 0.1, "seed": 0},
     ...     "cold": {"type": "constant", "value": 0, "rate": 0.01, "seed": 1},
     ...     "noise": {"type": "noise", "rate": 0.02, "noise_level": 100, "seed": 2},
-    ...     "qe": {"type": "quantum_efficiency_map", "seed": 3}
+    ...     "qe": {"type": "quantum_efficiency_map", "seed": 3},
+    ...     "smear": {"type": "readout_smear", "readout_time": 1},
     ... }
-    >>> camera = Camera(width=100, height=100, pixel_defects=pixel_defects)
+    >>> camera = Camera(width=1024, height=1024, pixel_defects=pixel_defects)
     >>> observatory = Observatory(camera=camera)
-    >>> sources = Sources.get_test_source()
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.center
 
     Now generate an image with and without pixel defects:
@@ -300,6 +301,14 @@ class Camera:
         wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         return wcs
 
+    def get_fov_radius(self) -> Angle:
+        """Half-diagonal field radius in degrees."""
+        if self.plate_scale is None:
+            raise ValueError("plate_scale must be set to compute FOV.")
+        fov_y = self.height * self.plate_scale / 3600.0
+        fov_x = self.width * self.plate_scale / 3600.0
+        return Angle(np.sqrt(fov_x**2 + fov_y**2) / 2, "deg")
+
     def _create_blank_image(self) -> np.ndarray:
         """Create a blank image filled with zeros for testing."""
         return np.zeros((self.height, self.width), dtype=np.uint16)
@@ -433,10 +442,8 @@ class ConstantPixelDefect(PixelDefect):
     ...     "hot": {"type": "constant", "value": 5000, "rate": 0.01, "seed": 0},
     ...     "cold": {"type": "constant", "value": 0, "rate": 0.01, "seed": 1}
     ... }
-    >>> observatory = Observatory(
-    ...     camera={"width": 80, "height": 80, "pixel_defects": pixel_defects}
-    ... )
-    >>> sources = Sources.get_test_source()
+    >>> observatory = Observatory(camera={"pixel_defects": pixel_defects})
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.center
     >>> _, clean_image, image = observatory.generate_image_stack(
     ...     exp_time=3, ra=ra, dec=dec, sources=sources, convert_all_to_adu=True
@@ -477,12 +484,10 @@ class TelegraphicPixelDefect(PixelDefect):
     --------
     >>> from cabaret import Observatory, Sources
     >>> pixel_defects = {
-    ...     "telegraphic": {"type": "telegraphic", "value": 5000, "rate": 0.5, "dim": 0}
+    ...     "telegraphic": {"type": "telegraphic", "value": 20, "rate": 0.01, "dim": 1}
     ... }
-    >>> observatory = Observatory(
-    ...     camera={"width": 80, "height": 80, "pixel_defects": pixel_defects}
-    ... )
-    >>> sources = Sources.get_test_source()
+    >>> observatory = Observatory(camera={"pixel_defects": pixel_defects})
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.center
     >>> _, clean_image, image = observatory.generate_image_stack(
     ...     exp_time=3, ra=ra, dec=dec, sources=sources, convert_all_to_adu=True
@@ -561,11 +566,9 @@ class RandomNoisePixelDefect(PixelDefect):
     Examples
     --------
     >>> from cabaret import Observatory, Sources
-    >>> pixel_defects = {"noise": {"type": "noise", "rate": 0.01, "noise_level": 5e3}}
-    >>> observatory = Observatory(
-    ...     camera={"width": 80, "height": 80, "pixel_defects": pixel_defects}
-    ... )
-    >>> sources = Sources.get_test_source()
+    >>> pixel_defects = {"noise": {"type": "noise", "rate": 0.1, "noise_level": 5e3}}
+    >>> observatory = Observatory(camera={"pixel_defects": pixel_defects})
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.center
     >>> _, clean_image, image = observatory.generate_image_stack(
     ...     exp_time=3, ra=ra, dec=dec, sources=sources, convert_all_to_adu=True
@@ -623,12 +626,10 @@ class QuantumEfficiencyMapPixelDefect(PixelDefect):
     --------
     >>> from cabaret import Observatory, Sources
     >>> pixel_defects = {
-    ...     "qe": {"type": "quantum_efficiency_map", "quantum_efficiency_std": 0.25}
+    ...     "qe": {"type": "quantum_efficiency_map", "quantum_efficiency_std": 0.5}
     ... }
-    >>> observatory = Observatory(
-    ...     camera={"width": 40, "height": 40, "pixel_defects": pixel_defects}
-    ... )
-    >>> sources = Sources.get_test_source()
+    >>> observatory = Observatory(camera={"pixel_defects": pixel_defects})
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.center
     >>> _, clean_image, image = observatory.generate_image_stack(
     ...     exp_time=3, ra=ra, dec=dec, sources=sources, convert_all_to_adu=True
@@ -703,16 +704,12 @@ class ReadoutSmearPixelDefect(PixelDefect):
     Examples
     --------
     >>> from cabaret import Observatory, Sources
-    >>> pixel_defects = {
-    ...     "smear": {"type": "readout_smear", "readout_time": 1}
-    ... }
-    >>> observatory = Observatory(
-    ...     camera={"width": 40, "height": 40, "pixel_defects": pixel_defects}
-    ... )
-    >>> sources = Sources.get_test_source()
+    >>> pixel_defects = {"smear": {"type": "readout_smear", "readout_time": 1}}
+    >>> observatory = Observatory(camera={"pixel_defects": pixel_defects})
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.center
     >>> _, clean_image, image = observatory.generate_image_stack(
-    ...     exp_time=1, ra=ra, dec=dec, sources=sources, convert_all_to_adu=True
+    ...     exp_time=5, ra=ra, dec=dec, sources=sources, convert_all_to_adu=True
     ... )
 
 

@@ -87,6 +87,15 @@ class Sources:
     def __len__(self) -> int:
         return len(self.fluxes)
 
+    def __getitem__(self, key) -> "Sources":
+        new_fluxes = np.asarray(self.fluxes)[key]
+        if np.isscalar(new_fluxes):
+            new_fluxes = np.array([new_fluxes])
+
+        new_coords = self.coords[key]
+
+        return Sources(new_coords, new_fluxes)  # type: ignore
+
     @classmethod
     def from_arrays(
         cls,
@@ -133,8 +142,12 @@ class Sources:
         return cls(**(parameters))
 
     @classmethod
-    def get_test_source(cls) -> "Sources":
+    def get_test_sources(cls) -> "Sources":
         """Return a simple test Sources instance."""
-        coords = SkyCoord(ra=[10.64], dec=[10.68], unit="deg")
-        fluxes = np.array([169_435.6])
-        return cls(coords, fluxes)
+        coords = SkyCoord(
+            ra=[12.29611593, 12.29929654, 12.33757534, 12.34247842, 12.29354464],
+            dec=[30.45675318, 30.44855405, 30.42613357, 30.48059276, 30.47310728],
+            unit="deg",
+        )
+        fluxes = np.array([307220.0, 64271.0, 61002.0, 43466.0, 9239.0])
+        return cls(coords, fluxes=fluxes)

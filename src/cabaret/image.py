@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import numpy as np
 import numpy.random
 from astropy import units as u
-from astropy.coordinates import AltAz, EarthLocation, SkyCoord, get_sun
+from astropy.coordinates import AltAz, Angle, EarthLocation, SkyCoord, get_sun
 from astropy.time import Time
 
 from cabaret.camera import Camera
@@ -161,7 +161,7 @@ def generate_star_image(
 
 def get_sources(
     center: SkyCoord,
-    radius: float,
+    radius: Angle,
     dateobs: datetime,
     n_star_limit: int,
     filter_band: Filters | str,
@@ -172,7 +172,7 @@ def get_sources(
     if not isinstance(sources, Sources):
         sources = get_gaia_sources(
             center=center,
-            radius=u.Quantity(radius, "deg"),
+            radius=radius,
             dateobs=dateobs,
             limit=n_star_limit,
             filter_band=filter_band,
@@ -307,9 +307,7 @@ def add_stars_and_sky(
         center = SkyCoord(ra=ra, dec=dec, unit="deg")
 
         assert camera.plate_scale is not None, "Camera plate scale must be set."
-        fovy = camera.height * camera.plate_scale / 3600
-        fovx = camera.width * camera.plate_scale / 3600
-        radius = np.sqrt(fovx**2 + fovy**2) / 2
+        radius = camera.get_fov_radius()
 
         logger.info("Querying Gaia for sources...")
         if dateobs is None:

@@ -15,7 +15,7 @@ class FITSManager:
     >>> from cabaret.fits_manager import FITSManager
     >>> from cabaret import Observatory, Sources
     >>> observatory = Observatory(name="My Observatory")
-    >>> sources = Sources.get_test_source()
+    >>> sources = Sources.get_test_sources()
     >>> ra, dec = sources.ra.deg.mean(), sources.dec.deg.mean()
     >>> image = observatory.generate_image(
     ...     ra=ra, dec=dec, exp_time=30, sources=sources, seed=0
