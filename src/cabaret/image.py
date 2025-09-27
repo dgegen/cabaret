@@ -9,7 +9,7 @@ from astropy.time import Time
 
 from cabaret.camera import Camera
 from cabaret.focuser import Focuser
-from cabaret.queries import Filters, get_gaia_sources
+from cabaret.queries import Filters, GaiaQuery
 from cabaret.site import Site
 from cabaret.sources import Sources
 from cabaret.telescope import Telescope
@@ -170,7 +170,7 @@ def get_sources(
 ) -> Sources:
     """Get sources from Gaia or use provided sources."""
     if not isinstance(sources, Sources):
-        sources = get_gaia_sources(
+        sources = GaiaQuery.get_gaia_sources(
             center=center,
             radius=radius,
             dateobs=dateobs,

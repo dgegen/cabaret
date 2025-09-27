@@ -26,6 +26,7 @@ pytestmark = pytest.mark.filterwarnings("ignore:.*FigureCanvasAgg.*:UserWarning"
         cabaret.focuser,
         cabaret.telescope,
         cabaret.observatory,
+        cabaret.queries,
     ],
     ids=[
         cabaret.sources.__name__,
@@ -35,6 +36,7 @@ pytestmark = pytest.mark.filterwarnings("ignore:.*FigureCanvasAgg.*:UserWarning"
         cabaret.focuser.__name__,
         cabaret.telescope.__name__,
         cabaret.observatory.__name__,
+        cabaret.queries.__name__,
     ],
 )
 def test_doctests(mod):

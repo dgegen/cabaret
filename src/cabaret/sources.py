@@ -14,7 +14,7 @@ class Sources:
 
     Create a Sources instance from arrays:
 
-    >>> from cabaret.queries import Sources
+    >>> from cabaret.sources import Sources
     >>> import numpy as np
     >>> from astropy.coordinates import SkyCoord
     >>> coords = np.array([[10.64, 41.26], [10.68, 41.22]])
