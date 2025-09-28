@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy.random
 from astropy.io import fits
+from astropy.wcs import WCS
 
 from cabaret.camera import Camera
 from cabaret.fits_manager import FITSManager
@@ -120,6 +121,7 @@ class Observatory:
         seed: int | None = None,
         timeout: float | None = None,
         sources: Sources | None = None,
+        wcs: WCS | None = None,
     ) -> numpy.ndarray:
         """Generate a simulated image of the sky.
 
@@ -149,6 +151,8 @@ class Observatory:
         sources : Sources, optional
             A collection of sources with their sky coordinates and fluxes.
             If provided, these sources will be used instead of querying Gaia.
+        wcs : WCS or None, optional
+            World Coordinate System information for the image.
         """
         return generate_image(
             ra=ra,
@@ -166,6 +170,7 @@ class Observatory:
             seed=seed,
             timeout=timeout,
             sources=sources,
+            wcs=wcs,
         )
 
     def generate_image_stack(

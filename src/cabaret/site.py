@@ -18,7 +18,3 @@ class Site:
 
     longitude: float | None = None
     """Site longitude in degrees."""
-    sky_background: float = 150
-    seeing: float = 1.3
-    latitude: float | None = None
-    longitude: float | None = None

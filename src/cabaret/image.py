@@ -6,6 +6,7 @@ import numpy.random
 from astropy import units as u
 from astropy.coordinates import AltAz, Angle, EarthLocation, SkyCoord, get_sun
 from astropy.time import Time
+from astropy.wcs import WCS
 
 from cabaret.camera import Camera
 from cabaret.focuser import Focuser
@@ -170,6 +171,7 @@ def get_sources(
 ) -> Sources:
     """Get sources from Gaia or use provided sources."""
     if not isinstance(sources, Sources):
+        logger.info("Querying Gaia for sources...")
         sources = GaiaQuery.get_sources(
             center=center,
             radius=radius,
@@ -238,6 +240,7 @@ def add_stars(
     rng: numpy.random.Generator,
     ra: float | None,
     dec: float | None,
+    wcs: WCS | None,
 ) -> np.ndarray:
     """Add stars to the image using the Moffat profile and sky background."""
     if len(sources) > 0:
@@ -251,7 +254,8 @@ def add_stars(
         if ra is None or dec is None:
             ra, dec = sources.center
 
-        wcs = camera.get_wcs(SkyCoord(ra=ra, dec=dec, unit="deg"))
+        if wcs is None:
+            wcs = camera.get_wcs(SkyCoord(ra=ra, dec=dec, unit="deg"))
         gaias_pixel = sources.to_pixel(wcs)
         on_camera_mask = camera.on_camera_mask(gaias_pixel)
         logger.debug(
@@ -297,6 +301,7 @@ def add_stars_and_sky(
     rng: numpy.random.Generator,
     timeout: float | None,
     sources: Sources | None,
+    wcs: WCS | None,
 ) -> np.ndarray:
     """Add stars and sky background to the base image."""
     if light == 1:
@@ -309,7 +314,6 @@ def add_stars_and_sky(
         assert camera.plate_scale is not None, "Camera plate scale must be set."
         radius = camera.get_fov_radius()
 
-        logger.info("Querying Gaia for sources...")
         if dateobs is None:
             dateobs = datetime.now(UTC)
         sources = get_sources(
@@ -336,6 +340,7 @@ def add_stars_and_sky(
             rng=rng,
             ra=ra,
             dec=dec,
+            wcs=wcs,
         )
     else:
         image = base
@@ -358,6 +363,7 @@ def generate_image(
     seed: int | None = None,
     timeout: float | None = None,
     sources: Sources | None = None,
+    wcs: WCS | None = None,
 ) -> np.ndarray:
     """
     Generate a simulated astronomical image.
@@ -394,6 +400,8 @@ def generate_image(
         Timeout for Gaia query.
     sources : Sources or None, optional
         Precomputed sources to use instead of querying Gaia.
+    wcs : WCS or None, optional
+        World Coordinate System information for the image.
 
     Returns
     -------
@@ -425,6 +433,7 @@ def generate_image(
             rng=rng,
             timeout=timeout,
             sources=sources,
+            wcs=wcs,
         )
     else:
         image = base
@@ -453,6 +462,7 @@ def generate_image_stack(
     timeout: float | None = None,
     sources: Sources | None = None,
     convert_all_to_adu: bool = False,
+    wcs: WCS | None = None,
 ) -> np.ndarray:
     """
     Generate a stack of images from different stages in the image simulation pipeline.
@@ -491,6 +501,8 @@ def generate_image_stack(
         Precomputed sources to use instead of querying Gaia.
     convert_all_to_adu : bool, optional
         Whether to convert all images to ADU. Default is False.
+    wcs : WCS or None, optional
+        World Coordinate System information for the image.
 
     Returns
     -------
@@ -526,6 +538,7 @@ def generate_image_stack(
             rng=rng,
             timeout=timeout,
             sources=sources,
+            wcs=wcs,
         )
     else:
         image = base
