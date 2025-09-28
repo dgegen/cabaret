@@ -60,54 +60,13 @@ def moffat_profile(
     return mp / mp_sum
 
 
-def generate_star_image_slow(
-    pos: np.ndarray,
-    fluxes: list[float],
-    FWHM: float,
-    frame_size: tuple[int, int],
-    rng: numpy.random.Generator,
-) -> np.ndarray:
-    """
-    Render stars onto an image using a slow loop-based approach.
-
-    Parameters
-    ----------
-    pos : np.ndarray
-        Pixel positions of stars (shape: 2, n_stars).
-    fluxes : list
-        list of fluxes for each star.
-    FWHM : float
-        Full width at half maximum for the Moffat profile.
-    frame_size : tuple
-        Size of the output image (width, height).
-    rng : numpy.random.Generator
-        Random number generator for Poisson noise.
-
-    Returns
-    -------
-    np.ndarray
-        Image with rendered stars.
-    """
-    x = np.linspace(0, frame_size[0] - 1, frame_size[0])
-    y = np.linspace(0, frame_size[1] - 1, frame_size[1])
-    xx, yy = np.meshgrid(x, y)
-
-    image = np.zeros(frame_size).T
-    for i, flux in enumerate(fluxes):
-        x0 = pos[0][i]
-        y0 = pos[1][i]
-        star = rng.poisson(flux) * moffat_profile(xx, yy, x0, y0, FWHM)
-        image += star
-
-    return image
-
-
 def generate_star_image(
     pos: np.ndarray,
     fluxes: list[float],
     FWHM: float,
     frame_size: tuple[int, int],
     rng: numpy.random.Generator,
+    fwhm_multiplier: float = 5.0,
 ) -> np.ndarray:
     """
     Render stars onto an image using a fast, windowed approach.
@@ -124,6 +83,8 @@ def generate_star_image(
         Size of the output image (width, height).
     rng : numpy.random.Generator
         Random number generator for Poisson noise.
+    fwhm_multiplier : float, optional
+        Multiplier to determine the rendering radius around each star (default: 5.0).
 
     Returns
     -------
@@ -134,7 +95,7 @@ def generate_star_image(
     y = np.linspace(0, frame_size[1] - 1, frame_size[1])
     xx, yy = np.meshgrid(x, y)
 
-    render_radius = FWHM * 5  # render 5 FWHM around the star
+    render_radius = FWHM * fwhm_multiplier  # render n * FWHM around the star
 
     image = np.zeros(frame_size).T
     for i, flux in enumerate(fluxes):
@@ -241,6 +202,7 @@ def add_stars(
     ra: float | None,
     dec: float | None,
     wcs: WCS | None,
+    fwhm_multiplier: float = 5.0,
 ) -> np.ndarray:
     """Add stars to the image using the Moffat profile and sky background."""
     if len(sources) > 0:
@@ -269,6 +231,7 @@ def add_stars(
             focuser.seeing_multiplier * site.seeing / camera.plate_scale,
             (camera.width, camera.height),
             rng=rng,
+            fwhm_multiplier=fwhm_multiplier,
         ).astype(np.float64)
 
         sky_background = (
@@ -302,6 +265,7 @@ def add_stars_and_sky(
     timeout: float | None,
     sources: Sources | None,
     wcs: WCS | None,
+    fwhm_multiplier: float = 5.0,
 ) -> np.ndarray:
     """Add stars and sky background to the base image."""
     if light == 1:
@@ -341,6 +305,7 @@ def add_stars_and_sky(
             ra=ra,
             dec=dec,
             wcs=wcs,
+            fwhm_multiplier=fwhm_multiplier,
         )
     else:
         image = base
@@ -364,6 +329,7 @@ def generate_image(
     timeout: float | None = None,
     sources: Sources | None = None,
     wcs: WCS | None = None,
+    fwhm_multiplier: float = 5.0,
 ) -> np.ndarray:
     """
     Generate a simulated astronomical image.
@@ -402,6 +368,8 @@ def generate_image(
         Precomputed sources to use instead of querying Gaia.
     wcs : WCS or None, optional
         World Coordinate System information for the image.
+    fwhm_multiplier : float, optional
+        Multiplier to determine the rendering radius around each star (default: 5.0).
 
     Returns
     -------
@@ -434,6 +402,7 @@ def generate_image(
             timeout=timeout,
             sources=sources,
             wcs=wcs,
+            fwhm_multiplier=fwhm_multiplier,
         )
     else:
         image = base
@@ -463,6 +432,7 @@ def generate_image_stack(
     sources: Sources | None = None,
     convert_all_to_adu: bool = False,
     wcs: WCS | None = None,
+    fwhm_multiplier: float = 5.0,
 ) -> np.ndarray:
     """
     Generate a stack of images from different stages in the image simulation pipeline.
@@ -503,6 +473,8 @@ def generate_image_stack(
         Whether to convert all images to ADU. Default is False.
     wcs : WCS or None, optional
         World Coordinate System information for the image.
+    fwhm_multiplier : float, optional
+        Multiplier to determine the rendering radius around each star (default: 5.0).
 
     Returns
     -------
@@ -539,6 +511,7 @@ def generate_image_stack(
             timeout=timeout,
             sources=sources,
             wcs=wcs,
+            fwhm_multiplier=fwhm_multiplier,
         )
     else:
         image = base

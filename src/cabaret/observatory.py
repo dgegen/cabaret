@@ -122,6 +122,7 @@ class Observatory:
         timeout: float | None = None,
         sources: Sources | None = None,
         wcs: WCS | None = None,
+        fwhm_multiplier: float = 5.0,
     ) -> numpy.ndarray:
         """Generate a simulated image of the sky.
 
@@ -153,6 +154,9 @@ class Observatory:
             If provided, these sources will be used instead of querying Gaia.
         wcs : WCS or None, optional
             World Coordinate System information for the image.
+        fwhm_multiplier : float, optional
+            Multiplier to determine the rendering radius around each star
+            (default: 5.0).
         """
         return generate_image(
             ra=ra,
@@ -171,6 +175,7 @@ class Observatory:
             timeout=timeout,
             sources=sources,
             wcs=wcs,
+            fwhm_multiplier=fwhm_multiplier,
         )
 
     def generate_image_stack(
@@ -187,6 +192,8 @@ class Observatory:
         timeout: float | None = None,
         sources: Sources | None = None,
         convert_all_to_adu: bool = False,
+        wcs: WCS | None = None,
+        fwhm_multiplier: float = 5.0,
     ) -> numpy.ndarray:
         """
         Generate a stack of images from different stages in the image simulation
@@ -231,6 +238,11 @@ class Observatory:
             Precomputed sources to use instead of querying Gaia.
         convert_all_to_adu : bool, optional
             Whether to convert all images to ADU. Default is False.
+        wcs : WCS or None, optional
+            World Coordinate System information for the image.
+        fwhm_multiplier : float, optional
+            Multiplier to determine the rendering radius around each star
+            (default: 5.0).
 
         Returns
         -------
@@ -258,6 +270,8 @@ class Observatory:
             timeout=timeout,
             sources=sources,
             convert_all_to_adu=convert_all_to_adu,
+            wcs=wcs,
+            fwhm_multiplier=fwhm_multiplier,
         )
 
     def generate_fits_image(
