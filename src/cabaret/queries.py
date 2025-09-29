@@ -5,6 +5,7 @@ from enum import Enum
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
 from astropy.table import Table
+from astropy.time import Time
 from astropy.units import Quantity
 
 from cabaret.sources import Sources
@@ -378,13 +379,23 @@ class GaiaQuery:
         return photons * 10 ** (-0.4 * mags)
 
     @staticmethod
-    def _apply_proper_motion(table: Table, dateobs: datetime):
+    def _apply_proper_motion(table: Table, dateobs: datetime | Time) -> Table:
         """
         Apply proper motion correction to RA and DEC columns
         for the given observation date.
         """
-        dateobs_frac = dateobs.year + (dateobs.timetuple().tm_yday - 1) / 365.25  # type: ignore
+
+        if isinstance(dateobs, Time):
+            dateobs_frac = float(dateobs.decimalyear)
+        elif isinstance(dateobs, datetime):
+            dateobs_frac = dateobs.year + (dateobs.timetuple().tm_yday - 1) / 365.25  # type: ignore
+        else:
+            raise ValueError(
+                f"dateobs must be an astropy.time.Time or datetime, got {type(dateobs)}"
+            )
+
         years = dateobs_frac - 2015.5  # type: ignore
         table["ra"] += years * table["pmra"] / 1000 / 3600  # type: ignore
         table["dec"] += years * table["pmdec"] / 1000 / 3600  # type: ignore
+
         return table
