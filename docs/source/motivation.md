@@ -4,8 +4,8 @@ Astronomical research increasingly rely on realistic simulations to interpret ob
 
 **cabaret** was developed to address these challenges by providing:
 
-- **Easy Access to GAIA Data:**  
-  Seamless integration with the [GAIA catalog](https://en.wikipedia.org/wiki/Gaia_catalogues) enables users to simulate star fields based on real astronomical data.
+- **Easy Access to Gaia Data:**  
+  Seamless integration with the [Gaia catalog](https://en.wikipedia.org/wiki/Gaia_catalogues) enables users to simulate star fields based on real astronomical data.
 
 - **Flexible Simulation Tools:**  
   Users can customize observatory parameters, detector properties, and simulation settings to match a wide range of scenarios.
