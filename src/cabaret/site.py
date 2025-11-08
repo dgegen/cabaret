@@ -21,3 +21,6 @@ class Site:
 
     elevation: float | None = None
     """Site elevation in meters."""
+
+    sun_altitude: float | None = None
+    """Sun altitude in degrees."""

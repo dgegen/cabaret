@@ -225,39 +225,82 @@ def add_sun_sky_background(
     logger: logging.Logger,
 ) -> np.ndarray:
     """Add sky background and sunlight if location is specified."""
-    if site.latitude is not None and site.longitude is not None:
-        logger.info(
-            "Since location specified, calculating sunlight brightness"
-            " based on sun's position"
-        )
-        location = EarthLocation(
-            lat=u.Quantity(site.latitude, "deg"), lon=u.Quantity(site.longitude, "deg")
-        )
-        obs_time = Time(dateobs, scale="utc")
-        sun = get_sun(obs_time)
-        altaz_frame = AltAz(obstime=obs_time, location=location)
-        sun_altaz = sun.transform_to(altaz_frame)
-        sun_altitude: float = sun_altaz.alt.degree  # type: ignore
-        logger.info(f"Sun altitude: {sun_altitude:.5f} deg at {dateobs} UTC")
 
-        a, b, c = (
-            np.float64(4533508.655833181),
-            np.float64(0.3937301435229289),
-            np.float64(-0.7907223506021084),
-        )  # calibrated for I+z band in Paranal
+    # Sky brightness model due to sunlight scattering
+    # calibrated for I+z band in Paranal
+    SKY_MODEL_A = np.float64(4533508.655833181)
+    SKY_MODEL_B = np.float64(0.3937301435229289)
+    SKY_MODEL_C = np.float64(-0.7907223506021084)
 
-        sky_brightness = a * b ** (c * sun_altitude)  # e-/m2/arcsec2/s
-        logger.info(f"sky_brightness (e-/m2/arcsec2/s): {sky_brightness}")
+    sun_altitude = _get_sun_altitude(site, dateobs, logger)
 
-        sky_e = (
-            sky_brightness * telescope.collecting_area * camera.plate_scale**2
-        )  # e-/s
-        logger.info(f"sky_e (e-/s): {sky_e}")
+    if sun_altitude is None:
+        return image
 
-        image += np.random.poisson(
-            np.ones((camera.height, camera.width)).astype(np.float64) * sky_e * exp_time
-        ).astype(np.float64)
+    sun_brightness = SKY_MODEL_A * SKY_MODEL_B ** (SKY_MODEL_C * sun_altitude)
+    logger.debug(f"sun_brightness (ph/m2/arcsec2/s): {sun_brightness}")
+
+    sun_electrons_per_sec = (
+        sun_brightness
+        * telescope.collecting_area
+        * camera.average_quantum_efficiency
+        * camera.plate_scale**2
+    )
+    logger.debug(f"sun_e (e-/s): {sun_electrons_per_sec}")
+
+    sun_electrons = sun_electrons_per_sec * exp_time
+    sun_background = np.random.poisson(
+        np.ones((camera.height, camera.width), dtype=np.float64) * sun_electrons
+    ).astype(np.float64)
+
+    image += sun_background
+
     return image
+
+
+def _get_sun_altitude(
+    site: Site,
+    dateobs: datetime,
+    logger: logging.Logger,
+) -> float | None:
+    """
+    Calculate the sun's altitude angle at the observation time.
+
+    Parameters
+    ----------
+    site : Site
+        Observatory site configuration.
+    dateobs : datetime
+        Observation date and time.
+    logger : logging.Logger
+        Logger instance for debug messages.
+
+    Returns
+    -------
+    float or None
+        Sun altitude in degrees, or None if it cannot be calculated.
+    """
+    if site.sun_altitude is not None:
+        return site.sun_altitude
+
+    if site.latitude is None or site.longitude is None:
+        return None
+
+    logger.debug("Calculating sunlight brightness based on sun's position")
+
+    location = EarthLocation(
+        lat=u.Quantity(site.latitude, "deg"),
+        lon=u.Quantity(site.longitude, "deg"),
+    )
+    obs_time = Time(dateobs, scale="utc")
+    sun = get_sun(obs_time)
+    altaz_frame = AltAz(obstime=obs_time, location=location)
+    sun_altaz = sun.transform_to(altaz_frame)
+    sun_altitude: float = sun_altaz.alt.degree  # type: ignore
+
+    logger.debug(f"Sun altitude: {sun_altitude:.5f} deg at {dateobs} UTC")
+
+    return sun_altitude
 
 
 def add_stars(
