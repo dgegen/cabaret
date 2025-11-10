@@ -578,7 +578,6 @@ class ColumnPixelDefect(PixelDefect):
         self.set_pixels(np.column_stack((Y.ravel(), X.ravel())), camera)
 
     def _select_random_lines(self, camera: Camera, dim: int = 0) -> np.ndarray:
-        print("Selecting random lines for column defect...")
         line_length = camera.height if dim == 0 else camera.width
         line_divisor = camera.width if dim == 0 else camera.height
         number_of_lines = self.number_of_defect_pixels(camera) // line_divisor
