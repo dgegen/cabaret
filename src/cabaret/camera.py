@@ -218,6 +218,9 @@ class Camera:
             The finalized image as a uint16 numpy array.
 
         """
+
+        image = np.clip(image, 0, self.well_depth)
+
         image = image / self.gain + self.bias
 
         image = np.clip(image, 0, self.max_adu)
@@ -346,13 +349,13 @@ class Camera:
         Parameters
         ----------
         pixel_coords : np.ndarray
-            An array of shape (n, 2) containing the pixel coordinates to be clipped.
+            An array of shape (2, n) containing the pixel coordinates to be clipped.
+            First row is x-coordinates, second row is y-coordinates.
 
         Returns
         -------
         np.ndarray
-            An array of shape (m, 2) containing the pixel coordinates within the
-            camera's bounds.
+            A boolean array indicating which coordinates are within the camera's bounds.
         """
         in_camera = (
             (pixel_coords[0, :] >= 0)
@@ -563,20 +566,22 @@ class ColumnPixelDefect(PixelDefect):
         self._lines = np.array(lines)
 
         # Set pixels based on the selected lines
-        if self.dim == 0:
+        if self.dim == 0:  # Rows (horizontal lines)
             if not np.all(self._lines < camera.height):
                 raise ValueError("Selected lines are outside the frame.")
-            X, Y = np.meshgrid(np.arange(camera.width), self._lines)
-        else:
+            Y, X = np.meshgrid(self._lines, np.arange(camera.width))
+        else:  # Columns (vertical lines)
             if not np.all(self._lines < camera.width):
                 raise ValueError("Selected lines are outside the frame.")
-            X, Y = np.meshgrid(self._lines, np.arange(camera.width))
+            Y, X = np.meshgrid(np.arange(camera.height), self._lines)
 
-        self.set_pixels(np.column_stack((X.ravel(), Y.ravel())), camera)
+        self.set_pixels(np.column_stack((Y.ravel(), X.ravel())), camera)
 
     def _select_random_lines(self, camera: Camera, dim: int = 0) -> np.ndarray:
-        line_length = camera.width if dim == 0 else camera.height
-        number_of_lines = self.number_of_defect_pixels(camera) // line_length
+        print("Selecting random lines for column defect...")
+        line_length = camera.height if dim == 0 else camera.width
+        line_divisor = camera.width if dim == 0 else camera.height
+        number_of_lines = self.number_of_defect_pixels(camera) // line_divisor
         selected_lines = self.rng.integers(line_length, size=(number_of_lines))
         return selected_lines
 
