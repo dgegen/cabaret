@@ -71,6 +71,27 @@ whose RA falls into the wrapped interval.
 - Cabaret will only query the shard tables that intersect the requested
   declination range; you don't need to list shard names manually.
 
+### Changing the default TAP source
+
+You can change the module-wide default TAP source so that calls which omit
+`tap_source` use your local SQLite file by default. For example:
+
+```python
+import cabaret
+
+cabaret.GaiaQuery.DEFAULT_TAP_SOURCE = cabaret.GaiaSQLiteSource(
+    database="/data/catalogs/gaia_subset.sqlite",
+    table="table_name",
+)
+
+# Subsequent calls that omit `tap_source` will use the SQLite file.
+image = cabaret.Observatory().generate_image(
+    ra=12.33230,  # right ascension in degrees
+    dec=30.4343,  # declination in degrees
+    exp_time=10,  # exposure time in seconds
+)
+```
+
 ## See also
 
 - The `GaiaQuery` implementation: [src/cabaret/queries.py](src/cabaret/queries.py)
