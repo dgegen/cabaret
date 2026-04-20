@@ -4,7 +4,7 @@ from cabaret.camera import Camera
 from cabaret.focuser import Focuser
 from cabaret.image import generate_image
 from cabaret.observatory import Observatory
-from cabaret.queries import Filters, GaiaQuery, GaiaTAPSource
+from cabaret.queries import Filters, GaiaQuery, GaiaSQLiteSource, GaiaTAPSource
 from cabaret.site import Site
 from cabaret.sources import Sources
 from cabaret.telescope import Telescope
@@ -14,6 +14,7 @@ __all__ = [
     "Filters",
     "Focuser",
     "GaiaTAPSource",
+    "GaiaSQLiteSource",
     "generate_image",
     "Observatory",
     "Site",

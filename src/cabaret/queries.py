@@ -1,7 +1,12 @@
+import math
+import sqlite3
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from contextlib import closing
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import TypeVar
 
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
@@ -13,9 +18,28 @@ from cabaret.sources import Sources
 
 __all__ = [
     "Filters",
+    "GaiaSQLiteSource",
     "GaiaTAPSource",
     "GaiaQuery",
 ]
+
+_T = TypeVar("_T")
+
+
+@dataclass(frozen=True)
+class GaiaSQLiteSource:
+    """Configuration for querying a local SQLite catalog.
+
+    Parameters
+    ----------
+    database : str
+        Path to the SQLite database file.
+    table : str, optional
+        Catalog table name. Default is ``gaia_sources``.
+    """
+
+    database: str
+    table: str = "gaia_sources"
 
 
 class Filters(Enum):
@@ -211,12 +235,13 @@ class GaiaQuery:
 
     @staticmethod
     def query(
-        center: tuple[float, float] | SkyCoord,
-        radius: float | Angle,
+        center: tuple[float, float] | SkyCoord | None = None,
+        radius: float | Angle | None = None,
+        bounds: tuple[float, float, float, float] | None = None,
         filter_bands: Filters | str | Sequence[Filters | str] = Filters.G,
         limit: int = 100000,
         timeout: float | None = None,
-        tap_source: GaiaTAPSource | str | None = None,
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
         allow_nulls: bool = False,
     ) -> Table:
         """Query a Gaia DR3 TAP service within a given radius around the center.
@@ -267,84 +292,50 @@ class GaiaQuery:
         >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
         >>> table = GaiaQuery.query(center, radius=0.1, limit=10, timeout=30)
         """
-        if tap_source is None:
-            tap_source = GaiaQuery.DEFAULT_TAP_SOURCE
-        tap_source = GaiaTAPSource.ensure_enum(tap_source)
-
+        requested_all = isinstance(filter_bands, str) and filter_bands.upper() == "ALL"
         bands = GaiaQuery._normalize_bands(filter_bands)
+        center_coords, radius_deg, bounds_tuple = GaiaQuery._normalize_region(
+            center=center,
+            radius=radius,
+            bounds=bounds,
+        )
+        backend = GaiaQuery._resolve_query_source(tap_source)
 
-        if isinstance(center, SkyCoord):
-            ra = center.ra.deg  # type: ignore
-            dec = center.dec.deg  # type: ignore
+        if isinstance(backend, GaiaTAPSource):
+            table = GaiaQuery._query_tap(
+                tap_source=backend,
+                bands=bands,
+                center=center_coords,
+                radius_deg=radius_deg,
+                bounds=bounds_tuple,
+                limit=limit,
+                timeout=timeout,
+                allow_nulls=allow_nulls,
+            )
         else:
-            ra, dec = center
-
-        cfg = _TAP_CONFIG[tap_source]
-
-        select_cols = [
-            f"{cfg['ra']} AS ra",
-            f"{cfg['dec']} AS dec",
-            f"{cfg['pmra']} AS pmra",
-            f"{cfg['pmdec']} AS pmdec",
-        ]
-        where: list[str] = []
-        joins: list[str] = []
-        need_tmass_join = False
-        seen: set[Filters] = set()
-
-        for band in bands:
-            if band in seen:
-                continue
-            seen.add(band)
-            if Filters.is_tmass(band.name):
-                col_expr = cfg[_TMASS_COL_KEY[band.name]]
-                need_tmass_join = True
-            else:
-                col_expr = cfg[band.name.lower() + "_mag"]
-            select_cols.append(f"{col_expr} AS {band.value}")
-            if not allow_nulls:
-                where.append(f"{col_expr} IS NOT NULL")
-
-        if need_tmass_join:
-            joins.extend(cfg["tmass_joins"])
-
-        # ORDER BY first band, brightest-first: ASC for all magnitude columns.
-        first = bands[0]
-        order_by = f"{first.value} ASC"
-
-        radius = radius.value if isinstance(radius, Quantity) else float(radius)
-        where.append(
-            f"1=CONTAINS("
-            f"POINT('ICRS', {cfg['ra']}, {cfg['dec']}), "
-            f"CIRCLE('ICRS', {ra}, {dec}, {radius}))"
-        )
-
-        select_clause = ", ".join(select_cols)
-        joins_clause = "\n".join(joins)
-        where_clause = " AND ".join(where)
-
-        adql = f"""
-        SELECT TOP {limit} {select_clause}
-        FROM {cfg["from"]}
-        {joins_clause}
-        WHERE {where_clause}
-        ORDER BY {order_by}
-        """
-
-        table = GaiaQuery._launch_job_with_timeout(
-            adql, tap_source=tap_source, timeout=timeout
-        )
+            table = GaiaQuery._query_sqlite(
+                sqlite_source=backend,
+                requested_bands=bands,
+                requested_all=requested_all,
+                center=center_coords,
+                radius_deg=radius_deg,
+                bounds=bounds_tuple,
+                limit=limit,
+                timeout=timeout,
+                allow_nulls=allow_nulls,
+            )
         return table
 
     @staticmethod
     def get_flux_table(
-        center: tuple[float, float] | SkyCoord,
-        radius: float | Angle,
+        center: tuple[float, float] | SkyCoord | None = None,
+        radius: float | Angle | None = None,
+        bounds: tuple[float, float, float, float] | None = None,
         filter_bands: Filters | str | Sequence[Filters | str] = Filters.G,
         dateobs: datetime | None = None,
         limit: int = 100000,
         timeout: float | None = None,
-        tap_source: GaiaTAPSource | str | None = None,
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
         allow_nulls: bool = False,
         keep_mag: bool = False,
     ) -> Table:
@@ -407,6 +398,7 @@ class GaiaQuery:
         table = GaiaQuery.query(
             center=center,
             radius=radius,
+            bounds=bounds,
             filter_bands=bands,
             limit=limit,
             timeout=timeout,
@@ -438,13 +430,14 @@ class GaiaQuery:
 
     @staticmethod
     def get_sources(
-        center: tuple[float, float] | SkyCoord,
-        radius: float | Angle,
+        center: tuple[float, float] | SkyCoord | None = None,
+        radius: float | Angle | None = None,
+        bounds: tuple[float, float, float, float] | None = None,
         filter_band: Filters | str = Filters.G,
         dateobs: datetime | None = None,
         limit: int = 100000,
         timeout: float | None = None,
-        tap_source: GaiaTAPSource | str | None = None,
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
     ) -> Sources:
         """
         Query a Gaia DR3 TAP service to retrieve the RA-DEC coordinates of stars
@@ -505,6 +498,7 @@ class GaiaQuery:
         table = GaiaQuery.query(
             center=center,
             radius=radius,
+            bounds=bounds,
             limit=limit,
             timeout=timeout,
             filter_bands=filter_band,
@@ -526,6 +520,415 @@ class GaiaQuery:
             dec=table["dec"].value.data,  # type: ignore
             fluxes=fluxes,
         )
+
+    @staticmethod
+    def _resolve_query_source(
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None,
+    ) -> GaiaTAPSource | GaiaSQLiteSource:
+        """Resolve a query source into either TAP or SQLite backend config."""
+        if tap_source is None:
+            return GaiaQuery.DEFAULT_TAP_SOURCE
+        if isinstance(tap_source, GaiaSQLiteSource | GaiaTAPSource):
+            return tap_source
+        if not isinstance(tap_source, str):
+            raise ValueError(
+                "tap_source must be a GaiaTAPSource, GaiaSQLiteSource, or str, "
+                f"got {type(tap_source)}"
+            )
+
+        source_text = tap_source.strip()
+        if source_text.lower().startswith("sqlite:///"):
+            db_path = source_text[len("sqlite:///"):]
+            if not db_path:
+                raise ValueError("SQLite URI must include a database path.")
+            return GaiaSQLiteSource(database=db_path)
+        if source_text.lower().endswith((".db", ".sqlite", ".sqlite3")):
+            return GaiaSQLiteSource(database=source_text)
+        return GaiaTAPSource.ensure_enum(source_text)
+
+    @staticmethod
+    def _normalize_region(
+        center: tuple[float, float] | SkyCoord | None,
+        radius: float | Angle | None,
+        bounds: tuple[float, float, float, float] | None,
+    ) -> tuple[
+        tuple[float, float] | None,
+        float | None,
+        tuple[float, float, float, float] | None,
+    ]:
+        """Normalize circle/bounds geometry inputs.
+
+        Exactly one of ``radius`` or ``bounds`` must be provided.
+        """
+        if (radius is None) == (bounds is None):
+            raise ValueError(
+                "Exactly one geometry must be specified: either radius or bounds."
+            )
+
+        center_coords: tuple[float, float] | None = None
+        radius_deg: float | None = None
+        bounds_tuple: tuple[float, float, float, float] | None = None
+
+        if radius is not None:
+            if center is None:
+                raise ValueError("center must be provided for radius-based queries.")
+            radius_value = (
+                radius.value if isinstance(radius, Quantity) else float(radius)
+            )
+            if radius_value <= 0:
+                raise ValueError("radius must be > 0.")
+            radius_deg = radius_value
+            if isinstance(center, SkyCoord):
+                center_coords = (
+                    float(center.ra.deg % 360.0),  # type: ignore
+                    float(center.dec.deg),  # type: ignore
+                )
+            else:
+                center_coords = (float(center[0] % 360.0), float(center[1]))
+        else:
+            assert bounds is not None
+            if len(bounds) != 4:
+                raise ValueError(
+                    "bounds must be a tuple of "
+                    "(ra_min, ra_max, dec_min, dec_max)."
+                )
+            ra_min, ra_max, dec_min, dec_max = bounds
+            dec_min = float(dec_min)
+            dec_max = float(dec_max)
+            if dec_min > dec_max:
+                raise ValueError("dec_min must be <= dec_max.")
+            if dec_min < -90.0 or dec_max > 90.0:
+                raise ValueError("declination bounds must stay within [-90, 90].")
+            bounds_tuple = (
+                float(ra_min % 360.0),
+                float(ra_max % 360.0),
+                dec_min,
+                dec_max,
+            )
+
+        return center_coords, radius_deg, bounds_tuple
+
+    @staticmethod
+    def _query_tap(
+        tap_source: GaiaTAPSource,
+        bands: list[Filters],
+        center: tuple[float, float] | None,
+        radius_deg: float | None,
+        bounds: tuple[float, float, float, float] | None,
+        limit: int,
+        timeout: float | None,
+        allow_nulls: bool,
+    ) -> Table:
+        """Execute a Gaia query against a TAP backend."""
+        cfg = _TAP_CONFIG[tap_source]
+
+        select_cols = [
+            f"{cfg['ra']} AS ra",
+            f"{cfg['dec']} AS dec",
+            f"{cfg['pmra']} AS pmra",
+            f"{cfg['pmdec']} AS pmdec",
+        ]
+        where: list[str] = []
+        joins: list[str] = []
+        need_tmass_join = False
+
+        for band in bands:
+            if Filters.is_tmass(band.name):
+                col_expr = cfg[_TMASS_COL_KEY[band.name]]
+                need_tmass_join = True
+            else:
+                col_expr = cfg[band.name.lower() + "_mag"]
+            select_cols.append(f"{col_expr} AS {band.value}")
+            if not allow_nulls:
+                where.append(f"{col_expr} IS NOT NULL")
+
+        if need_tmass_join:
+            joins.extend(cfg["tmass_joins"])
+
+        first = bands[0]
+        order_by = f"{first.value} ASC"
+
+        if radius_deg is not None:
+            assert center is not None
+            where.append(
+                f"1=CONTAINS("
+                f"POINT('ICRS', {cfg['ra']}, {cfg['dec']}), "
+                f"CIRCLE('ICRS', {center[0]}, {center[1]}, {radius_deg}))"
+            )
+        else:
+            assert bounds is not None
+            where.append(
+                GaiaQuery._build_tap_bounds_where(
+                    cfg["ra"],
+                    cfg["dec"],
+                    bounds,
+                )
+            )
+
+        select_clause = ", ".join(select_cols)
+        joins_clause = "\n".join(joins)
+        where_clause = " AND ".join(where)
+
+        adql = f"""
+        SELECT TOP {limit} {select_clause}
+        FROM {cfg["from"]}
+        {joins_clause}
+        WHERE {where_clause}
+        ORDER BY {order_by}
+        """
+
+        return GaiaQuery._launch_job_with_timeout(
+            adql, tap_source=tap_source, timeout=timeout
+        )
+
+    @staticmethod
+    def _query_sqlite(
+        sqlite_source: GaiaSQLiteSource,
+        requested_bands: list[Filters],
+        requested_all: bool,
+        center: tuple[float, float] | None,
+        radius_deg: float | None,
+        bounds: tuple[float, float, float, float] | None,
+        limit: int,
+        timeout: float | None,
+        allow_nulls: bool,
+    ) -> Table:
+        """Execute a Gaia-like query against a local SQLite catalog."""
+
+        def _run_query() -> Table:
+            with closing(sqlite3.connect(sqlite_source.database)) as connection:
+                connection.row_factory = sqlite3.Row
+                cursor = connection.cursor()
+                table_name = GaiaQuery._quote_sql_identifier(sqlite_source.table)
+
+                available_columns = {
+                    str(row[1])
+                    for row in cursor.execute(f"PRAGMA table_info({table_name})")
+                }
+                required_position_columns = {"ra", "dec"}
+                missing_required = sorted(required_position_columns - available_columns)
+                if missing_required:
+                    raise ValueError(
+                        "SQLite source is missing required columns: "
+                        f"{', '.join(missing_required)}"
+                    )
+
+                if requested_all:
+                    selected_bands = [
+                        band
+                        for band in requested_bands
+                        if band.value in available_columns
+                    ]
+                    if not selected_bands:
+                        raise ValueError(
+                            "SQLite source does not contain any supported "
+                            "magnitude columns."
+                        )
+                else:
+                    missing_requested = [
+                        band.value
+                        for band in requested_bands
+                        if band.value not in available_columns
+                    ]
+                    if missing_requested:
+                        raise ValueError(
+                            "SQLite source is missing requested band columns: "
+                            f"{', '.join(sorted(missing_requested))}"
+                        )
+                    selected_bands = requested_bands
+
+                select_cols = [
+                    '"ra" AS ra',
+                    '"dec" AS dec',
+                    (
+                        '"pmra" AS pmra'
+                        if "pmra" in available_columns
+                        else "NULL AS pmra"
+                    ),
+                    (
+                        '"pmdec" AS pmdec'
+                        if "pmdec" in available_columns
+                        else "NULL AS pmdec"
+                    ),
+                ]
+                for band in selected_bands:
+                    quoted_col = GaiaQuery._quote_sql_identifier(band.value)
+                    select_cols.append(f"{quoted_col} AS {band.value}")
+
+                where_sql: list[str] = []
+                params: list[float] = []
+                if not allow_nulls:
+                    for band in selected_bands:
+                        quoted_col = GaiaQuery._quote_sql_identifier(band.value)
+                        where_sql.append(f"{quoted_col} IS NOT NULL")
+
+                if bounds is not None:
+                    bounds_sql, bounds_params = GaiaQuery._build_sqlite_bounds_where(
+                        bounds
+                    )
+                    where_sql.append(bounds_sql)
+                    params.extend(bounds_params)
+                else:
+                    assert center is not None
+                    assert radius_deg is not None
+                    circle_sql, circle_params = (
+                        GaiaQuery._build_sqlite_circle_prefilter_where(
+                            center=center,
+                            radius_deg=radius_deg,
+                        )
+                    )
+                    where_sql.append(circle_sql)
+                    params.extend(circle_params)
+
+                first_band = selected_bands[0]
+                order_by = GaiaQuery._quote_sql_identifier(first_band.value)
+
+                query_parts = [
+                    f"SELECT {', '.join(select_cols)}",
+                    f"FROM {table_name}",
+                ]
+                if where_sql:
+                    query_parts.append("WHERE " + " AND ".join(where_sql))
+                query_parts.append(f"ORDER BY {order_by} ASC")
+                query_parts.append(f"LIMIT {int(limit)}")
+                sql = "\n".join(query_parts)
+
+                rows = list(cursor.execute(sql, tuple(params)))
+                output_names = ["ra", "dec", "pmra", "pmdec"] + [
+                    band.value for band in selected_bands
+                ]
+                output_rows = [
+                    tuple(row[name] for name in output_names) for row in rows
+                ]
+                table = Table(rows=output_rows, names=output_names)
+
+                if radius_deg is not None:
+                    assert center is not None
+                    inside_circle = GaiaQuery._on_sky_circle_mask(
+                        ra=np.asarray(table["ra"], dtype=float),
+                        dec=np.asarray(table["dec"], dtype=float),
+                        center_ra=center[0],
+                        center_dec=center[1],
+                        radius_deg=radius_deg,
+                    )
+                    table = table[inside_circle][:limit]
+                return table
+
+        return GaiaQuery._run_callable_with_timeout(
+            func=_run_query,
+            timeout=timeout,
+            timeout_message=(
+                "SQLite Gaia query timed out. "
+                "You may want to increase the timeout or reduce the query size."
+            ),
+        )
+
+    @staticmethod
+    def _build_tap_bounds_where(
+        ra_col: str,
+        dec_col: str,
+        bounds: tuple[float, float, float, float],
+    ) -> str:
+        """Build an ADQL bounds predicate with RA wrap handling."""
+        ra_min, ra_max, dec_min, dec_max = bounds
+        dec_clause = f"({dec_col} >= {dec_min} AND {dec_col} <= {dec_max})"
+        if ra_min <= ra_max:
+            ra_clause = f"({ra_col} >= {ra_min} AND {ra_col} <= {ra_max})"
+        else:
+            ra_clause = f"({ra_col} >= {ra_min} OR {ra_col} <= {ra_max})"
+        return f"{dec_clause} AND {ra_clause}"
+
+    @staticmethod
+    def _build_sqlite_bounds_where(
+        bounds: tuple[float, float, float, float],
+    ) -> tuple[str, tuple[float, ...]]:
+        """Build SQL bounds predicate with parameters and RA wrap handling."""
+        ra_min, ra_max, dec_min, dec_max = bounds
+        if ra_min <= ra_max:
+            return (
+                '("dec" >= ? AND "dec" <= ?) AND ("ra" >= ? AND "ra" <= ?)',
+                (dec_min, dec_max, ra_min, ra_max),
+            )
+        return (
+            '("dec" >= ? AND "dec" <= ?) AND (("ra" >= ?) OR ("ra" <= ?))',
+            (dec_min, dec_max, ra_min, ra_max),
+        )
+
+    @staticmethod
+    def _build_sqlite_circle_prefilter_where(
+        center: tuple[float, float],
+        radius_deg: float,
+    ) -> tuple[str, tuple[float, ...]]:
+        """Build a rectangular SQL prefilter around a circle query."""
+        center_ra, center_dec = center
+        dec_min = max(-90.0, center_dec - radius_deg)
+        dec_max = min(90.0, center_dec + radius_deg)
+
+        cos_dec = max(abs(math.cos(math.radians(center_dec))), 1e-6)
+        ra_half_width = min(180.0, radius_deg / cos_dec)
+        ra_min = (center_ra - ra_half_width) % 360.0
+        ra_max = (center_ra + ra_half_width) % 360.0
+
+        return GaiaQuery._build_sqlite_bounds_where((ra_min, ra_max, dec_min, dec_max))
+
+    @staticmethod
+    def _on_sky_circle_mask(
+        ra: np.ndarray,
+        dec: np.ndarray,
+        center_ra: float,
+        center_dec: float,
+        radius_deg: float,
+    ) -> np.ndarray:
+        """Return mask for points within an angular radius on the sphere."""
+        ra_rad = np.radians(ra)
+        dec_rad = np.radians(dec)
+        center_ra_rad = math.radians(center_ra)
+        center_dec_rad = math.radians(center_dec)
+
+        cos_sep = (
+            np.sin(dec_rad) * math.sin(center_dec_rad)
+            + np.cos(dec_rad)
+            * math.cos(center_dec_rad)
+            * np.cos(ra_rad - center_ra_rad)
+        )
+        cos_sep = np.clip(cos_sep, -1.0, 1.0)
+        sep_deg = np.degrees(np.arccos(cos_sep))
+        return sep_deg <= radius_deg
+
+    @staticmethod
+    def _quote_sql_identifier(identifier: str) -> str:
+        """Quote a SQLite identifier safely."""
+        if not identifier:
+            raise ValueError("SQL identifier cannot be empty.")
+        return '"' + identifier.replace('"', '""') + '"'
+
+    @staticmethod
+    def _run_callable_with_timeout(
+        func: Callable[[], _T],
+        timeout: float | None,
+        timeout_message: str,
+    ) -> _T:
+        """Run a callable with optional timeout using a daemon thread."""
+        if timeout is None:
+            return func()
+
+        result: list[_T] = []
+        exc: list = []
+
+        def _run_safe():
+            try:
+                result.append(func())
+            except Exception as e:
+                exc.append(e)
+
+        t = threading.Thread(target=_run_safe, daemon=True)
+        t.start()
+        t.join(timeout=timeout)
+        if t.is_alive():
+            raise TimeoutError(timeout_message)
+        if exc:
+            raise exc[0]
+        return result[0]
 
     @staticmethod
     def _launch_job_with_timeout(
@@ -561,35 +964,20 @@ class GaiaQuery:
         """
         from astroquery.utils.tap.core import TapPlus
 
-        def _run():
+        def _run() -> Table:
             tap = TapPlus(url=tap_source.value)
             job = tap.launch_job(query, **kwargs)
-            return job.get_results()  # type: ignore
+            return Table(job.get_results())  # type: ignore[arg-type]
 
-        if timeout is None:
-            return _run()
-
-        result: list = []
-        exc: list = []
-
-        def _run_safe():
-            try:
-                result.append(_run())
-            except Exception as e:
-                exc.append(e)
-
-        t = threading.Thread(target=_run_safe, daemon=True)
-        t.start()
-        t.join(timeout=timeout)
-        if t.is_alive():
-            raise TimeoutError(
-                "Gaia query timed out."
-                " You may want to increase the timeout or reduce the query size."
-                f" Query was: {query}"
-            )
-        if exc:
-            raise exc[0]
-        return result[0]
+        return GaiaQuery._run_callable_with_timeout(
+            func=_run,
+            timeout=timeout,
+            timeout_message=(
+                "Gaia query timed out. "
+                "You may want to increase the timeout or reduce the query size. "
+                f"Query was: {query}"
+            ),
+        )
 
     # Vega zero-points for all supported bands.
     # See _derive_band_properties for how these were obtained.
@@ -666,7 +1054,7 @@ class GaiaQuery:
     def _normalize_bands(
         filter_bands: Filters | str | Sequence[Filters | str],
     ) -> list["Filters"]:
-        """Normalize filter_bands argument to a list[Filters].
+        """Normalize filter_bands argument to a deduplicated list[Filters].
 
         Passing the string ``"all"`` (case-insensitive) expands to every
         available filter, equivalent to ``Filters.all()``.
@@ -682,7 +1070,7 @@ class GaiaQuery:
             )
         if not filter_bands:
             raise ValueError("At least one filter_band must be specified.")
-        return [Filters.ensure_enum(b) for b in filter_bands]
+        return list(dict.fromkeys(Filters.ensure_enum(b) for b in filter_bands))
 
     @staticmethod
     def _derive_band_properties():

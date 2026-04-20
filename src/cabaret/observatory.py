@@ -13,7 +13,7 @@ from cabaret.camera import Camera
 from cabaret.fits_manager import FITSManager
 from cabaret.focuser import Focuser
 from cabaret.image import generate_image, generate_image_stack
-from cabaret.queries import Filters, GaiaTAPSource
+from cabaret.queries import Filters, GaiaSQLiteSource, GaiaTAPSource
 from cabaret.site import Site
 from cabaret.sources import Sources
 from cabaret.telescope import Telescope
@@ -125,7 +125,7 @@ class Observatory:
         sources: Sources | None = None,
         wcs: WCS | None = None,
         fwhm_multiplier: float = 5.0,
-        tap_source: GaiaTAPSource | str | None = None,
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
     ) -> numpy.ndarray:
         """Generate a simulated image of the sky.
 
@@ -202,7 +202,7 @@ class Observatory:
         convert_all_to_adu: bool = True,
         wcs: WCS | None = None,
         fwhm_multiplier: float = 5.0,
-        tap_source: GaiaTAPSource | str | None = None,
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
     ) -> numpy.ndarray:
         """
         Generate a stack of images from different stages in the image simulation
