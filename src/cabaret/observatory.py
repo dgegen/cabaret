@@ -306,7 +306,7 @@ class Observatory:
         fwhm_multiplier: float = 5.0,
         user_header: dict[str, Any] | fits.Header | None = None,
         overwrite: bool = True,
-        tap_source: GaiaTAPSource | str | None = None,
+        tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
     ) -> fits.HDUList:
         """Generate a simulated FITS image of the sky.
 

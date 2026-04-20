@@ -1,4 +1,5 @@
 import math
+import re
 import sqlite3
 import threading
 from collections.abc import Callable, Sequence
@@ -254,6 +255,13 @@ class GaiaQuery:
         radius : float or astropy.units.Quantity
             The radius of the FOV in degrees. If a Quantity is given, it must be
             convertible to degrees.
+        bounds : tuple or None
+            Field-of-view bounds specified as ``(ra_min, ra_max, dec_min, dec_max)``
+            in degrees. RA values are interpreted modulo 360 (degrees) and may
+            be given so that ``ra_min <= ra_max`` for a contiguous RA interval,
+            or ``ra_min > ra_max`` to indicate an interval that wraps across
+            RA=0 (for example ``(350.0, 10.0, -5.0, 5.0)``). Declination bounds
+            must satisfy ``-90 <= dec_min <= dec_max <= 90``.
         filter_bands : Filters, str, or sequence thereof, optional
             One or more filter bands to include as magnitude columns. Accepts a single
             ``Filters`` member or its name as a string, or a list of either.
@@ -354,6 +362,13 @@ class GaiaQuery:
             The sky coordinates of the center of the FOV.
         radius : float or astropy.units.Quantity
             The radius of the FOV in degrees.
+        bounds : tuple or None
+            Field-of-view bounds specified as ``(ra_min, ra_max, dec_min, dec_max)``
+            in degrees. RA values are interpreted modulo 360 (degrees) and may
+            be given so that ``ra_min <= ra_max`` for a contiguous RA interval,
+            or ``ra_min > ra_max`` to indicate an interval that wraps across
+            RA=0 (for example ``(350.0, 10.0, -5.0, 5.0)``). Declination bounds
+            must satisfy ``-90 <= dec_min <= dec_max <= 90``.
         filter_bands : Filters, str, or sequence thereof, optional
             One or more filter bands. Default is ``Filters.G``.
         dateobs : datetime.datetime or None, optional
@@ -448,9 +463,16 @@ class GaiaQuery:
         center : tuple or astropy.coordinates.SkyCoord
             The sky coordinates of the center of the FOV.
             If a tuple is given, it should contain the RA and DEC in degrees.
-        radius : float or astropy.units.Quantity
+        radius : float or astropy.units.Quantity or None
             The radius of the FOV in degrees. If a Quantity is given, it must be
             convertible to degrees.
+        bounds : tuple or None
+            Field-of-view bounds specified as ``(ra_min, ra_max, dec_min, dec_max)``
+            in degrees. RA values are interpreted modulo 360 (degrees) and may
+            be given so that ``ra_min <= ra_max`` for a contiguous RA interval,
+            or ``ra_min > ra_max`` to indicate an interval that wraps across
+            RA=0 (for example ``(350.0, 10.0, -5.0, 5.0)``). Declination bounds
+            must satisfy ``-90 <= dec_min <= dec_max <= 90``.
         filter_band : Filters or str, optional
             The filter to use for the flux column. Default is Filters.G.
         dateobs : datetime.datetime, optional
@@ -538,7 +560,7 @@ class GaiaQuery:
 
         source_text = tap_source.strip()
         if source_text.lower().startswith("sqlite:///"):
-            db_path = source_text[len("sqlite:///"):]
+            db_path = source_text[len("sqlite:///") :]
             if not db_path:
                 raise ValueError("SQLite URI must include a database path.")
             return GaiaSQLiteSource(database=db_path)
@@ -559,6 +581,14 @@ class GaiaQuery:
         """Normalize circle/bounds geometry inputs.
 
         Exactly one of ``radius`` or ``bounds`` must be provided.
+
+        The ``bounds`` tuple should be ``(ra_min, ra_max, dec_min, dec_max)``
+        in degrees. RA values are normalised modulo 360; if ``ra_min <= ra_max``
+        the RA interval is contiguous, otherwise ``ra_min > ra_max`` indicates
+        an interval that wraps across RA=0. Declination bounds must satisfy
+        ``-90 <= dec_min <= dec_max <= 90``. The function returns a tuple of
+        ``(center_coords, radius_deg, bounds_tuple)`` where only the
+        applicable geometry is populated.
         """
         if (radius is None) == (bounds is None):
             raise ValueError(
@@ -589,8 +619,7 @@ class GaiaQuery:
             assert bounds is not None
             if len(bounds) != 4:
                 raise ValueError(
-                    "bounds must be a tuple of "
-                    "(ra_min, ra_max, dec_min, dec_max)."
+                    "bounds must be a tuple of (ra_min, ra_max, dec_min, dec_max)."
                 )
             ra_min, ra_max, dec_min, dec_max = bounds
             dec_min = float(dec_min)
@@ -699,11 +728,18 @@ class GaiaQuery:
             with closing(sqlite3.connect(sqlite_source.database)) as connection:
                 connection.row_factory = sqlite3.Row
                 cursor = connection.cursor()
-                table_name = GaiaQuery._quote_sql_identifier(sqlite_source.table)
+                selected_tables, schema_table = GaiaQuery._select_sqlite_tables(
+                    cursor=cursor,
+                    sqlite_source=sqlite_source,
+                    center=center,
+                    radius_deg=radius_deg,
+                    bounds=bounds,
+                )
+                schema_table_name = GaiaQuery._quote_sql_identifier(schema_table)
 
                 available_columns = {
                     str(row[1])
-                    for row in cursor.execute(f"PRAGMA table_info({table_name})")
+                    for row in cursor.execute(f"PRAGMA table_info({schema_table_name})")
                 }
                 required_position_columns = {"ra", "dec"}
                 missing_required = sorted(required_position_columns - available_columns)
@@ -781,25 +817,35 @@ class GaiaQuery:
                     params.extend(circle_params)
 
                 first_band = selected_bands[0]
-                order_by = GaiaQuery._quote_sql_identifier(first_band.value)
 
-                query_parts = [
-                    f"SELECT {', '.join(select_cols)}",
-                    f"FROM {table_name}",
-                ]
-                if where_sql:
-                    query_parts.append("WHERE " + " AND ".join(where_sql))
-                query_parts.append(f"ORDER BY {order_by} ASC")
-                query_parts.append(f"LIMIT {int(limit)}")
-                sql = "\n".join(query_parts)
-
-                rows = list(cursor.execute(sql, tuple(params)))
                 output_names = ["ra", "dec", "pmra", "pmdec"] + [
                     band.value for band in selected_bands
                 ]
-                output_rows = [
-                    tuple(row[name] for name in output_names) for row in rows
-                ]
+                if not selected_tables:
+                    return Table(rows=[], names=output_names)
+
+                output_rows: list[tuple] = []
+                for table in selected_tables:
+                    table_name = GaiaQuery._quote_sql_identifier(table)
+                    query_parts = [
+                        f"SELECT {', '.join(select_cols)}",
+                        f"FROM {table_name}",
+                    ]
+                    if where_sql:
+                        query_parts.append("WHERE " + " AND ".join(where_sql))
+                    sql = "\n".join(query_parts)
+
+                    rows = list(cursor.execute(sql, tuple(params)))
+                    output_rows.extend(
+                        tuple(
+                            float("nan")
+                            if row[name] is None or row[name] == ""
+                            else row[name]
+                            for name in output_names
+                        )
+                        for row in rows
+                    )
+
                 table = Table(rows=output_rows, names=output_names)
 
                 if radius_deg is not None:
@@ -811,8 +857,15 @@ class GaiaQuery:
                         center_dec=center[1],
                         radius_deg=radius_deg,
                     )
-                    table = table[inside_circle][:limit]
-                return table
+                    table = table[inside_circle]
+
+                if len(table) > 0:
+                    sort_values = np.asarray(
+                        np.ma.filled(table[first_band.value], np.inf),  # type: ignore[index]
+                        dtype=float,
+                    )
+                    table = table[np.argsort(sort_values, kind="stable")]
+                return Table(table[:limit])
 
         return GaiaQuery._run_callable_with_timeout(
             func=_run_query,
@@ -837,6 +890,78 @@ class GaiaQuery:
         else:
             ra_clause = f"({ra_col} >= {ra_min} OR {ra_col} <= {ra_max})"
         return f"{dec_clause} AND {ra_clause}"
+
+    @staticmethod
+    def _select_sqlite_tables(
+        cursor: sqlite3.Cursor,
+        sqlite_source: GaiaSQLiteSource,
+        center: tuple[float, float] | None,
+        radius_deg: float | None,
+        bounds: tuple[float, float, float, float] | None,
+    ) -> tuple[list[str], str]:
+        """Resolve SQLite tables for a query, including dec-ring shards."""
+        all_tables = GaiaQuery._list_sqlite_tables(cursor)
+
+        if sqlite_source.table in all_tables:
+            return [sqlite_source.table], sqlite_source.table
+
+        ring_tables: list[tuple[str, float, float]] = []
+        for table in all_tables:
+            dec_range = GaiaQuery._parse_dec_ring_table_name(table)
+            if dec_range is not None:
+                ring_tables.append((table, dec_range[0], dec_range[1]))
+
+        if not ring_tables:
+            raise ValueError(
+                f"SQLite table '{sqlite_source.table}' not found and no sharded "
+                "declination-ring tables were detected."
+            )
+
+        if bounds is not None:
+            dec_min = bounds[2]
+            dec_max = bounds[3]
+        else:
+            assert center is not None
+            assert radius_deg is not None
+            dec_min = max(-90.0, center[1] - radius_deg)
+            dec_max = min(90.0, center[1] + radius_deg)
+
+        ring_dec_min = {table: tmin for table, tmin, _ in ring_tables}
+
+        selected = sorted(
+            [
+                table
+                for table, ring_min, ring_max in ring_tables
+                if ring_max >= dec_min and ring_min <= dec_max
+            ],
+            key=lambda name: ring_dec_min[name],
+        )
+
+        schema_table = min(ring_tables, key=lambda item: item[1])[0]
+        return selected, schema_table
+
+    @staticmethod
+    def _list_sqlite_tables(cursor: sqlite3.Cursor) -> list[str]:
+        """List user tables in a SQLite database."""
+        return [
+            str(row[0])
+            for row in cursor.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        ]
+
+    @staticmethod
+    def _parse_dec_ring_table_name(table_name: str) -> tuple[float, float] | None:
+        """Parse sharded dec-ring table names such as '-25_-24'."""
+        match = re.match(r"^(-?\d+(?:\.\d+)?)_(-?\d+(?:\.\d+)?)$", table_name)
+        if match is None:
+            return None
+        dec_min = float(match.group(1))
+        dec_max = float(match.group(2))
+        if dec_min > dec_max:
+            return dec_max, dec_min
+        return dec_min, dec_max
 
     @staticmethod
     def _build_sqlite_bounds_where(
@@ -885,12 +1010,9 @@ class GaiaQuery:
         center_ra_rad = math.radians(center_ra)
         center_dec_rad = math.radians(center_dec)
 
-        cos_sep = (
-            np.sin(dec_rad) * math.sin(center_dec_rad)
-            + np.cos(dec_rad)
-            * math.cos(center_dec_rad)
-            * np.cos(ra_rad - center_ra_rad)
-        )
+        cos_sep = np.sin(dec_rad) * math.sin(center_dec_rad) + np.cos(
+            dec_rad
+        ) * math.cos(center_dec_rad) * np.cos(ra_rad - center_ra_rad)
         cos_sep = np.clip(cos_sep, -1.0, 1.0)
         sep_deg = np.degrees(np.arccos(cos_sep))
         return sep_deg <= radius_deg
