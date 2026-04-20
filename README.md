@@ -112,7 +112,7 @@ center = SkyCoord(ra=323.362583, dec=-0.82325, unit="deg")
 table = cabaret.GaiaQuery.query(
     center=center,
     radius=camera.get_fov_radius() * 1.5,
-    filter_band=cabaret.Filters.G,
+    filter_bands=cabaret.Filters.G,
 )
 
 # Filter out bright sources
@@ -133,6 +133,31 @@ image = observatory.generate_image(
     dec=center.dec.deg,
     exp_time=0.5,
     sources=sources,
+)
+```
+
+### Offline SQLite Catalogs
+
+You can query a local SQLite catalog instead of a remote TAP endpoint.
+
+The local table is expected to contain at least `ra` and `dec`, and optionally
+`pmra`, `pmdec`, plus Gaia/2MASS magnitude columns like `phot_g_mean_mag`,
+`phot_bp_mean_mag`, `phot_rp_mean_mag`, `j_m`, `h_m`, `ks_m`.
+
+```python
+import cabaret
+from astropy.coordinates import SkyCoord
+
+sqlite_source = cabaret.GaiaSQLiteSource(
+    database="/data/catalogs/gaia_subset.sqlite",
+)
+
+table = cabaret.GaiaQuery.query(
+    center=SkyCoord(ra=323.362583, dec=-0.82325, unit="deg"),
+    radius=0.1,
+    filter_bands=[cabaret.Filters.G],
+    tap_source=sqlite_source,
+    limit=5000,
 )
 ```
 

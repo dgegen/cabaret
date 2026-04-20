@@ -192,14 +192,15 @@ def generate_star_image(
 
 
 def get_sources(
-    center: SkyCoord,
-    radius: Angle,
+    center: SkyCoord | None,
+    radius: Angle | None,
     dateobs: datetime,
     n_star_limit: int,
     filter_band: Filters | str,
     timeout: float | None,
     sources: Sources | None = None,
     tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
+    bounds: tuple[float, float, float, float] | None = None,
 ) -> Sources:
     """Get sources from Gaia or use provided sources."""
     if not isinstance(sources, Sources):
@@ -207,6 +208,7 @@ def get_sources(
         sources = GaiaQuery.get_sources(
             center=center,
             radius=radius,
+            bounds=bounds,
             dateobs=dateobs,
             limit=n_star_limit,
             filter_band=filter_band,

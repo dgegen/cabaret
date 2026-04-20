@@ -229,6 +229,40 @@ def _make_sqlite_catalog(path: str):
         conn.close()
 
 
+def _make_sharded_sqlite_catalog(path: str):
+    conn = sqlite3.connect(path)
+    try:
+        conn.execute(
+            'CREATE TABLE "-1_0" ('
+            "ra REAL, dec REAL, pmra REAL, pmdec REAL, phot_g_mean_mag REAL"
+            ")"
+        )
+        conn.execute(
+            'CREATE TABLE "0_1" ('
+            "ra REAL, dec REAL, pmra REAL, pmdec REAL, phot_g_mean_mag REAL"
+            ")"
+        )
+        conn.executemany(
+            'INSERT INTO "-1_0" (ra, dec, pmra, pmdec, phot_g_mean_mag) '
+            "VALUES (?, ?, ?, ?, ?)",
+            [
+                (20.0, -0.6, 0.0, 0.0, 13.0),
+                (10.0, -0.2, 0.0, 0.0, 12.0),
+            ],
+        )
+        conn.executemany(
+            'INSERT INTO "0_1" (ra, dec, pmra, pmdec, phot_g_mean_mag) '
+            "VALUES (?, ?, ?, ?, ?)",
+            [
+                (40.0, 0.2, 0.0, 0.0, 11.0),
+                (30.0, 0.6, 0.0, 0.0, 10.0),
+            ],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def test_query_sqlite_by_radius(tmp_path):
     db_path = tmp_path / "gaia_offline.db"
     _make_sqlite_catalog(str(db_path))
@@ -305,3 +339,35 @@ def test_get_sources_sqlite_bounds(tmp_path):
 
     assert len(sources) == 2
     assert np.all(sources.fluxes > 0)
+
+
+def test_query_sqlite_sharded_auto_detect_bounds(tmp_path):
+    db_path = tmp_path / "gaia_sharded.db"
+    _make_sharded_sqlite_catalog(str(db_path))
+
+    table = GaiaQuery.query(
+        bounds=(0.0, 60.0, -0.3, 0.3),
+        filter_bands=Filters.G,
+        limit=10,
+        tap_source=GaiaSQLiteSource(database=str(db_path)),
+    )
+
+    assert len(table) == 2
+    assert np.all((-0.3 <= table["dec"]) & (table["dec"] <= 0.3))
+
+
+def test_query_sqlite_sharded_auto_detect_radius(tmp_path):
+    db_path = tmp_path / "gaia_sharded.db"
+    _make_sharded_sqlite_catalog(str(db_path))
+
+    table = GaiaQuery.query(
+        center=(30.0, 0.0),
+        radius=30.0,
+        filter_bands="G",
+        limit=10,
+        tap_source=f"sqlite:///{db_path}",
+    )
+
+    assert len(table) == 4
+    assert np.all(table["dec"] >= -1.0)
+    assert np.all(table["dec"] <= 1.0)
