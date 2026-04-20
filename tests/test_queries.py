@@ -1,8 +1,10 @@
+import sqlite3
+
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 
-from cabaret.queries import Filters, GaiaQuery, GaiaTAPSource
+from cabaret.queries import Filters, GaiaQuery, GaiaSQLiteSource, GaiaTAPSource
 from cabaret.sources import Sources
 
 from .utils import has_tap_source
@@ -194,3 +196,112 @@ def test_drop_nan_fluxes_no_nans_returns_self():
         fluxes=np.array([100.0, 200.0]),
     )
     assert sources.drop_nan_fluxes() is sources
+
+
+def _make_sqlite_catalog(path: str):
+    conn = sqlite3.connect(path)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE gaia_sources (
+                ra REAL,
+                dec REAL,
+                pmra REAL,
+                pmdec REAL,
+                phot_g_mean_mag REAL,
+                h_m REAL
+            )
+            """
+        )
+        rows = [
+            (359.9, 0.0, 1.0, 2.0, 10.0, 9.0),
+            (0.2, 0.1, 0.0, 0.0, 11.0, 10.0),
+            (15.0, 2.0, None, None, 13.0, 12.0),
+            (45.0, 20.0, -1.0, 0.5, 12.0, None),
+        ]
+        conn.executemany(
+            "INSERT INTO gaia_sources (ra, dec, pmra, pmdec, phot_g_mean_mag, h_m) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_query_sqlite_by_radius(tmp_path):
+    db_path = tmp_path / "gaia_offline.db"
+    _make_sqlite_catalog(str(db_path))
+
+    table = GaiaQuery.query(
+        center=(0.0, 0.0),
+        radius=1.0,
+        filter_bands="G",
+        limit=10,
+        tap_source=GaiaSQLiteSource(database=str(db_path)),
+    )
+
+    assert len(table) == 2
+    assert "phot_g_mean_mag" in table.colnames
+    assert np.all(table["phot_g_mean_mag"] >= 10.0)
+
+
+def test_query_sqlite_by_bounds_wraparound(tmp_path):
+    db_path = tmp_path / "gaia_offline.db"
+    _make_sqlite_catalog(str(db_path))
+
+    table = GaiaQuery.query(
+        bounds=(359.5, 0.5, -1.0, 1.0),
+        filter_bands="G",
+        limit=10,
+        tap_source=f"sqlite:///{db_path}",
+    )
+
+    assert len(table) == 2
+    assert np.all((table["ra"] > 359.5) | (table["ra"] < 0.5))
+
+
+def test_query_sqlite_filter_bands_all_partial_schema(tmp_path):
+    db_path = tmp_path / "gaia_offline.db"
+    _make_sqlite_catalog(str(db_path))
+
+    table = GaiaQuery.query(
+        center=(15.0, 2.0),
+        radius=2.0,
+        filter_bands="all",
+        limit=10,
+        tap_source=GaiaSQLiteSource(database=str(db_path)),
+    )
+
+    assert "phot_g_mean_mag" in table.colnames
+    assert "h_m" in table.colnames
+    assert "phot_bp_mean_mag" not in table.colnames
+
+
+def test_query_sqlite_missing_explicit_band_raises(tmp_path):
+    db_path = tmp_path / "gaia_offline.db"
+    _make_sqlite_catalog(str(db_path))
+
+    with pytest.raises(ValueError, match="missing requested band columns"):
+        GaiaQuery.query(
+            center=(15.0, 2.0),
+            radius=2.0,
+            filter_bands=[Filters.BP],
+            limit=10,
+            tap_source=GaiaSQLiteSource(database=str(db_path)),
+        )
+
+
+def test_get_sources_sqlite_bounds(tmp_path):
+    db_path = tmp_path / "gaia_offline.db"
+    _make_sqlite_catalog(str(db_path))
+
+    sources = GaiaQuery.get_sources(
+        bounds=(359.5, 0.5, -1.0, 1.0),
+        filter_band=Filters.G,
+        limit=10,
+        tap_source=GaiaSQLiteSource(database=str(db_path)),
+    )
+
+    assert len(sources) == 2
+    assert np.all(sources.fluxes > 0)
