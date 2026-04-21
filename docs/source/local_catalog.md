@@ -82,7 +82,7 @@ table = cabaret.GaiaQuery.query(
 )
 ```
 
-## RA wraparound (bounds that cross RA=0)
+## RA wraparound
 
 RA values are interpreted modulo 360. If `ra_min <= ra_max` the interval is
 treated as contiguous; if `ra_min > ra_max` the interval is interpreted as
@@ -92,5 +92,5 @@ whose RA falls into the wrapped interval.
 
 ## See also
 
-- The `GaiaQuery` implementation: [src/cabaret/queries.py](src/cabaret/queries.py)
+- {doc}`GaiaQuery API Reference <generated/cabaret.GaiaQuery>`
 - Prebuilt sharded Gaia+2MASS SQLite catalogs: [ppp-one/gaia-tmass-sqlite](https://github.com/ppp-one/gaia-tmass-sqlite)

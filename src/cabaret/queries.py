@@ -211,10 +211,12 @@ class GaiaQuery:
     either the raw Astropy Table, a flux-normalised multi-band Table, or a
     Sources instance with RA-DEC coordinates and fluxes.
 
-    The TAP service is selected via ``GaiaQuery.DEFAULT_TAP_SOURCE`` (class
-    level) or the per-call ``tap_source`` argument.  The default is
-    ``GaiaTAPSource.VIZIER`` (CDS VizieR), which hosts a copy of Gaia DR3 and
-    is a reliable fallback when the ESA Gaia Archive is unavailable.
+    The query backend is selected via ``GaiaQuery.DEFAULT_TAP_SOURCE`` (class
+    level) or the per-call ``tap_source`` argument.  Accepts a
+    ``GaiaTAPSource`` for an online TAP service, a ``GaiaSQLiteSource`` for an
+    offline SQLite database, a TAP endpoint URL, a ``sqlite:///...`` URI, or a
+    direct path to a ``.db``/``.sqlite``/``.sqlite3`` file.  The default is
+    ``GaiaTAPSource.VIZIER`` (CDS VizieR), which hosts a copy of Gaia DR3.
 
     Examples
     --------
@@ -231,7 +233,7 @@ class GaiaQuery:
     >>> sources = GaiaQuery.get_sources(center, radius=0.05, limit=10, timeout=30)
     """
 
-    DEFAULT_TAP_SOURCE: GaiaTAPSource = GaiaTAPSource.VIZIER
+    DEFAULT_TAP_SOURCE: GaiaTAPSource | GaiaSQLiteSource | str = GaiaTAPSource.VIZIER
     """Default TAP service used when ``tap_source=None`` is passed to query methods."""
 
     @staticmethod
@@ -276,10 +278,12 @@ class GaiaQuery:
         timeout : float, optional
             The maximum time to wait for the Gaia query to complete, in seconds.
             If None, there is no timeout. By default, it is set to None.
-        tap_source : GaiaTAPSource, str, or None, optional
-            TAP service to query. Accepts a ``GaiaTAPSource`` member or its name
-            as a string (e.g. ``"GAIA"`` or ``"VIZIER"``). If None, uses
-            ``GaiaQuery.DEFAULT_TAP_SOURCE`` (default: ``GaiaTAPSource.VIZIER``).
+        tap_source : GaiaTAPSource, GaiaSQLiteSource, str, or None, optional
+            Query backend to use. Accepts a ``GaiaTAPSource`` for an online TAP
+            service, a ``GaiaSQLiteSource`` for an offline SQLite database, a TAP
+            endpoint URL as a string, a ``sqlite:///...`` URI, or a direct path to
+            a SQLite database file ending in ``.db``, ``.sqlite``, or
+            ``.sqlite3``. If None, the default TAP backend is used.
         allow_nulls : bool, optional
             If False (default), only rows where all requested band columns are
             non-NULL are returned (``IS NOT NULL`` filter per band). Set to True
@@ -377,8 +381,10 @@ class GaiaQuery:
             Maximum number of sources to retrieve. Default is 100000.
         timeout : float or None, optional
             Query timeout in seconds. Default is None (no timeout).
-        tap_source : GaiaTAPSource, str, or None, optional
-            TAP service to query. Default is ``GaiaQuery.DEFAULT_TAP_SOURCE``.
+        tap_source : GaiaTAPSource, GaiaSQLiteSource, str, or None, optional
+            Query backend to use. Accepts a ``GaiaTAPSource``, ``GaiaSQLiteSource``,
+            TAP URL, ``sqlite:///...`` URI, or ``.db``/``.sqlite``/``.sqlite3`` path.
+            Default is ``GaiaQuery.DEFAULT_TAP_SOURCE``.
         allow_nulls : bool, optional
             Forwarded to :meth:`query`. If True, rows with NULL magnitude values
             are included in the result. Default is False.
@@ -484,10 +490,12 @@ class GaiaQuery:
         timeout : float, optional
             The maximum time to wait for the Gaia query to complete, in seconds.
             If None, there is no timeout. By default, it is set to None.
-        tap_source : GaiaTAPSource, str, or None, optional
-            TAP service to query. Accepts a ``GaiaTAPSource`` member or its name
-            as a string (e.g. ``"GAIA"`` or ``"VIZIER"``). If None, uses
-            ``GaiaQuery.DEFAULT_TAP_SOURCE`` (default: ``GaiaTAPSource.VIZIER``).
+        tap_source : GaiaTAPSource, GaiaSQLiteSource, str, or None, optional
+            Query backend to use. Accepts a ``GaiaTAPSource`` for an online TAP
+            service, a ``GaiaSQLiteSource`` for an offline SQLite database, a TAP
+            endpoint URL as a string, a ``sqlite:///...`` URI, or a direct path to
+            a SQLite database file ending in ``.db``, ``.sqlite``, or
+            ``.sqlite3``. If None, the default TAP backend is used.
 
         Returns
         -------
@@ -724,9 +732,11 @@ class GaiaQuery:
     ) -> Table:
         """Execute a Gaia-like query against a local SQLite catalog."""
 
+        connection = sqlite3.connect(sqlite_source.database, check_same_thread=False)
+        connection.row_factory = sqlite3.Row
+
         def _run_query() -> Table:
-            with closing(sqlite3.connect(sqlite_source.database)) as connection:
-                connection.row_factory = sqlite3.Row
+            with closing(connection):
                 cursor = connection.cursor()
                 selected_tables, schema_table = GaiaQuery._select_sqlite_tables(
                     cursor=cursor,
@@ -874,6 +884,7 @@ class GaiaQuery:
                 "SQLite Gaia query timed out. "
                 "You may want to increase the timeout or reduce the query size."
             ),
+            on_timeout=connection.interrupt,
         )
 
     @staticmethod
@@ -1029,6 +1040,7 @@ class GaiaQuery:
         func: Callable[[], _T],
         timeout: float | None,
         timeout_message: str,
+        on_timeout: Callable[[], None] | None = None,
     ) -> _T:
         """Run a callable with optional timeout using a daemon thread."""
         if timeout is None:
@@ -1047,6 +1059,8 @@ class GaiaQuery:
         t.start()
         t.join(timeout=timeout)
         if t.is_alive():
+            if on_timeout is not None:
+                on_timeout()
             raise TimeoutError(timeout_message)
         if exc:
             raise exc[0]
