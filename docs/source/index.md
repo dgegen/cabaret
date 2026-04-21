@@ -13,7 +13,7 @@ It allows you to generate synthetic images, configure observatory components, an
 installation
 motivation
 notebooks/quickstart.ipynb
-local_database
+local_catalog
 citation
 ```
 
