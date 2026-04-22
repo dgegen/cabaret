@@ -2,6 +2,7 @@ import math
 import re
 import sqlite3
 import threading
+import warnings
 from collections.abc import Callable, Sequence
 from contextlib import closing
 from dataclasses import dataclass
@@ -246,6 +247,7 @@ class GaiaQuery:
         timeout: float | None = None,
         tap_source: GaiaTAPSource | GaiaSQLiteSource | str | None = None,
         allow_nulls: bool = False,
+        filter_band: Filters | str | None = None,
     ) -> Table:
         """Query a Gaia DR3 TAP service within a given radius around the center.
 
@@ -288,6 +290,8 @@ class GaiaQuery:
             If False (default), only rows where all requested band columns are
             non-NULL are returned (``IS NOT NULL`` filter per band). Set to True
             to allow rows with missing magnitude values through.
+        filter_band : Filters or str, optional
+            Deprecated. Use ``filter_bands`` instead.
 
         Returns
         -------
@@ -304,6 +308,13 @@ class GaiaQuery:
         >>> center = SkyCoord(ra=10.68458, dec=41.26917, unit='deg')
         >>> table = GaiaQuery.query(center, radius=0.1, limit=10, timeout=30)
         """
+        if filter_band is not None:
+            warnings.warn(
+                "filter_band is deprecated; use filter_bands instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            filter_bands = filter_band
         requested_all = isinstance(filter_bands, str) and filter_bands.upper() == "ALL"
         bands = GaiaQuery._normalize_bands(filter_bands)
         center_coords, radius_deg, bounds_tuple = GaiaQuery._normalize_region(
