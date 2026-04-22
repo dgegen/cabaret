@@ -1012,7 +1012,13 @@ class GaiaQuery:
         dec_max = min(90.0, center_dec + radius_deg)
 
         cos_dec = max(abs(math.cos(math.radians(center_dec))), 1e-6)
-        ra_half_width = min(180.0, radius_deg / cos_dec)
+        ra_half_width = radius_deg / cos_dec
+
+        # When the circle is wide enough to span all RA values (e.g. near a pole),
+        # skip the RA filter — only the dec bounds apply.
+        if ra_half_width >= 180.0 or dec_min <= -90.0 or dec_max >= 90.0:
+            return '"dec" >= ? AND "dec" <= ?', (dec_min, dec_max)
+
         ra_min = (center_ra - ra_half_width) % 360.0
         ra_max = (center_ra + ra_half_width) % 360.0
 
