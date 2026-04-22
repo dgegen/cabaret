@@ -356,6 +356,92 @@ def test_query_sqlite_sharded_auto_detect_bounds(tmp_path):
     assert np.all((-0.3 <= table["dec"]) & (table["dec"] <= 0.3))
 
 
+def _make_sky_catalog(path: str, rows: list[tuple]):
+    """rows: (ra, dec, phot_g_mean_mag)"""
+    conn = sqlite3.connect(path)
+    try:
+        conn.execute(
+            "CREATE TABLE gaia_sources "
+            "(ra REAL, dec REAL, pmra REAL, pmdec REAL, phot_g_mean_mag REAL)"
+        )
+        conn.executemany(
+            "INSERT INTO gaia_sources VALUES (?, ?, NULL, NULL, ?)",
+            rows,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _query_ra_set(db_path: str, center: tuple, radius: float) -> set[float]:
+    table = GaiaQuery.query(
+        center=center,
+        radius=radius,
+        filter_bands="G",
+        limit=100,
+        tap_source=GaiaSQLiteSource(database=db_path),
+    )
+    return set(np.round(table["ra"], 1).tolist())
+
+
+def test_sqlite_radius_ra_wrap_straddles_zero(tmp_path):
+    """Stars straddling RA=0 must both appear when the circle crosses the wrap."""
+    db = str(tmp_path / "cat.db")
+    _make_sky_catalog(
+        db,
+        [
+            (359.5, 0.0, 10.0),  # 0.5° west of RA=0 — inside
+            (0.5, 0.0, 11.0),  # 0.5° east of RA=0 — inside
+            (5.0, 0.0, 12.0),  # 5° east — outside
+            (355.0, 0.0, 13.0),  # 5° west — outside
+        ],
+    )
+    assert _query_ra_set(db, center=(0.0, 0.0), radius=2.0) == {359.5, 0.5}
+
+
+def test_sqlite_radius_ra_wrap_center_near_360(tmp_path):
+    """Circle centered at RA=359 must capture a star that wraps past RA=0."""
+    db = str(tmp_path / "cat.db")
+    _make_sky_catalog(
+        db,
+        [
+            (1.0, 0.0, 10.0),  # 2° east via wrap — inside
+            (357.0, 0.0, 11.0),  # 2° west — inside
+            (5.0, 0.0, 12.0),  # 6° east via wrap — outside
+        ],
+    )
+    assert _query_ra_set(db, center=(359.0, 0.0), radius=3.0) == {1.0, 357.0}
+
+
+def test_sqlite_radius_near_north_pole_all_ra(tmp_path):
+    """Stars near the pole at opposite RA must be found."""
+    db = str(tmp_path / "cat.db")
+    # (RA=0, Dec=89) → (RA=180, Dec=89.5): great-circle separation ≈ 1.5° < 2°
+    _make_sky_catalog(
+        db,
+        [
+            (0.0, 89.5, 10.0),  # same RA as center — inside
+            (180.0, 89.5, 11.0),  # opposite RA, ~1.5° away — inside
+            (90.0, 87.5, 12.0),  # ~2.5° from center — outside
+        ],
+    )
+    assert _query_ra_set(db, center=(0.0, 89.0), radius=2.0) == {0.0, 180.0}
+
+
+def test_sqlite_radius_near_south_pole_all_ra(tmp_path):
+    """Same as north-pole test, mirrored to Dec=-89."""
+    db = str(tmp_path / "cat.db")
+    _make_sky_catalog(
+        db,
+        [
+            (0.0, -89.5, 10.0),
+            (180.0, -89.5, 11.0),
+            (90.0, -87.5, 12.0),
+        ],
+    )
+    assert _query_ra_set(db, center=(0.0, -89.0), radius=2.0) == {0.0, 180.0}
+
+
 def test_query_sqlite_sharded_auto_detect_radius(tmp_path):
     db_path = tmp_path / "gaia_sharded.db"
     _make_sharded_sqlite_catalog(str(db_path))
